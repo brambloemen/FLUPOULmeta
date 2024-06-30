@@ -1,0 +1,5 @@
+results/
+workflow/logs/
+workflow/classify/
+workflow/.snakemake/
+

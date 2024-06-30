@@ -1,0 +1,14 @@
+name: modkit
+channels:
+  - nanoporetech
+  - bioconda
+  - conda-forge
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
+  - libgcc-ng=13.2.0=h77fa898_13
+  - libgomp=13.2.0=h77fa898_13
+  - libstdcxx-ng=13.2.0=hc0a3c3a_13
+  - libzlib=1.2.13=h4ab18f5_6
+  - modkit=0.3.0=h3fd9d12_5
+  - zlib=1.2.13=h4ab18f5_6

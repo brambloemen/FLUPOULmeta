@@ -1,6 +1,6 @@
 rule Flye_kma_classify:
     input:
-        assembly="results/{sample}/Flye/assembly.fasta"
+        assembly="results/{sample}/Medaka/consensus.fasta"
     output:
         sam=temp("results/{sample}/FlyeClassify/{sample}_assembly.sam"),
         res="results/{sample}/FlyeClassify/{sample}"
@@ -32,11 +32,12 @@ rule Flye_kma_classify_samtools_filter:
         ml load samtools/1.17
         samtools view -hb -@{resources.cpus_per_task} -F 0x904 {input.sam} | \
         samtools sort -@{resources.cpus_per_task} > {output.bam} 2>{log}
+        samtools index -@{resources.cpus_per_task} {output.bam}
         """
 
 rule Flye_kma_align_resfinder:
     input:
-        assembly="results/{sample}/Flye/assembly.fasta"
+        assembly="results/{sample}/Medaka/consensus.fasta"
     output:
         sam=temp("results/{sample}/FlyeClassify/{sample}_ResF.sam"),
         res="results/{sample}/FlyeClassify/{sample}_ResF"
@@ -72,11 +73,12 @@ rule Flye_kma_ResF_repair_header:
         samtools view -hb -@{resources.cpus_per_task} -F 0x904 temp.sam | \
         samtools sort -@{resources.cpus_per_task} > {output.bam} 2>{log}
         rm reads.txt header.txt temp.sam
+        samtools index -@{resources.cpus_per_task} {output.bam}
         """
 
 rule Flye_kma_align_pointfinder:
     input:
-        assembly="results/{sample}/Flye/assembly.fasta"
+        assembly="results/{sample}/Medaka/consensus.fasta"
     output:
         sam=temp("results/{sample}/FlyeClassify/{sample}_PointF.sam"),
         res="results/{sample}/FlyeClassify/{sample}_PointF"
@@ -112,4 +114,5 @@ rule Flye_kma_repair_header_pointf:
         samtools view -hb -@{resources.cpus_per_task} -F 0x904 temp_pointf.sam | \
         samtools sort -@{resources.cpus_per_task} > {output.bam} 2>{log}
         rm reads.txt header.txt temp_pointf.sam
+        samtools index -@{resources.cpus_per_task} {output.bam}
         """

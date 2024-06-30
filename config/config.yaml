@@ -1,6 +1,7 @@
-threads: 25
+threads: 30
 memory: 200000
 jobs: 1
+model: "r1041_e82_400bps_sup_v5.0.0"
 
 # samples:
 #   F4D4: "/scratch/brbloemen/FLUPOUL/Metagenomic_screening/ReadMapping/KMA/fastq_hq/F4_D4.HQ.fastq.gz"

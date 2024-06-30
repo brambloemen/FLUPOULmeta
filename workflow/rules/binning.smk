@@ -1,7 +1,7 @@
 rule metabat:
     input:
-        assembly="results/{sample}/Flye/assembly.fasta",
-        bam="results/{sample}/Flye/{sample}_assembly.bam"
+        assembly="results/{sample}/Medaka/consensus.fasta",
+        bam="results/{sample}/MapToAssemb/{sample}_assembly.bam"
     output:
         txt="results/{sample}/MetaBAT/depths.txt",
         binning_done="results/{sample}/MetaBAT/metabat_done"
@@ -20,11 +20,35 @@ rule metabat:
         touch {output.binning_done}
         """
 
-rule contigbintsvs:
+# rule graphmb:
+#     input:
+#         txt="results/{sample}/MetaBAT/depths.txt",
+#         fasta="results/{sample}/Flye/assembly.fasta",
+#         graph="results/{sample}/Flye/assembly.gfa",
+#         bam="results/{sample}/Flye/{sample}_assembly.bam"
+#     output:
+#         binning_done="results/{sample}/GraphMB/GraphMB_done"
+#     log:
+#         "results/{sample}/logs/GraphMB_done.log"
+#     conda:
+#         "../envs/graphmb.yaml"
+#     resources:
+#         cpus_per_task=config['threads'],
+#         mem_mb=config['memory']
+#     params:
+#         assembdir="results/{sample}/Flye/",
+#         outputdir="results/{sample}/GraphMB/"
+#     shell:
+#         """
+#         graphmb --assembly {params.assembdir} --outdir {params.outputdir} --assembly_name {input.fasta} --graph_file {input.graph} --depth {input.txt} --seed 37 --numcores {resources.cpus_per_task}
+#         touch {output.binning_done}
+#         """
+
+rule medaka_contigbintsvs:
     input:
         metabat="results/{sample}/MetaBAT/metabat_done"
     output:
-        metabatbins="results/{sample}/DAS_Tool/MetaBATBins.tsv"
+        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -35,10 +59,57 @@ rule contigbintsvs:
         python scripts/ContigBinsTSV.py {params.inputdir} > {output.metabatbins}
         """
 
+rule nanomotif_discovery:
+    input:
+        fasta="results/{sample}/Medaka/consensus.fasta",
+        bed="results/{sample}/NanoMotif/{sample}_assembly_modpileup.bed",
+        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv"
+    output:
+        binmotifs="results/{sample}/NanoMotif/bin-motifs.tsv",
+        motifsscored="results/{sample}/NanoMotif/motifs-scored.tsv",
+        motifs="results/{sample}/NanoMotif/motifs.tsv"
+    log:
+      "results/{sample}/logs/nanomotif_disc.log"
+    conda:
+      "../envs/modkit.yaml"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    params:
+        outdir="results/{sample}/NanoMotif/"
+    shell:
+      """
+      nanomotif motif_discovery {input} --out {params.outdir} -t {resources.cpus_per_task}
+      """
+
+rule nanomotif_include:
+    input:
+        binmotifs="results/{sample}/NanoMotif/bin-motifs.tsv",
+        motifsscored="results/{sample}/NanoMotif/motifs-scored.tsv",
+        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv"
+    output:
+        newbins="results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
+    log:
+      "results/{sample}/logs/nanomotif_include.log"
+    conda:
+      "../envs/modkit.yaml"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    params:
+        outdir="results/{sample}/NanoMotif/bin"
+    shell:
+      """
+      nanomotif include_contigs --motifs_scored {input.motifsscored} \
+      --bin_motifs {input.binmotifs} --contig_bins {input.metabatbins} \
+      --out {params.outdir} -t {resources.cpus_per_task} --run_detect_contamination
+      """
+
 rule dastool:
     input:
-        fasta= "results/{sample}/Flye/assembly.fasta",
-        metabatbins="results/{sample}/DAS_Tool/MetaBATBins.tsv"
+        fasta="results/{sample}/Medaka/consensus.fasta",
+        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv",
+        nanomotifbins="results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
     output:
         DASdone="results/{sample}/DAS_Tool/DASdone",
         ctg2bin="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
@@ -54,6 +125,6 @@ rule dastool:
         outdir="results/{sample}/DAS_Tool/DASTool"
     shell:
       """
-      DAS_Tool -i {input.metabatbins} -c {input.fasta} \
+      DAS_Tool -i {input.metabatbins},{input.nanomotifbins} -c {input.fasta} \
       -o {params.outdir} --threads {resources.cpus_per_task} {params.params} 2>{log} && touch {output.DASdone}
       """

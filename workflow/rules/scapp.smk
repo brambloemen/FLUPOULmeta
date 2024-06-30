@@ -18,7 +18,8 @@ rule map_reads_to_graph:
         minimap2 -ax map-ont -t {resources.cpus_per_task} {output.graph} {input.fastq_proka} 2>>{log} | \
         samtools view -hb -F4 -@{resources.cpus_per_task} > {output.bam} 2>>{log}
         """
-
+#!!TODO: scapp uses unpolished gfa file (converted to fastg above); resulting plasmids are thus unpolished
+#        Fix this by retrieving replacing unpolished contigs with the ones from Medaka/consensus.fasta where possible
 rule scapp:
     input:
         graph="results/{sample}/SCAPP/assembly_graph.fastg",
