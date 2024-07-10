@@ -28,6 +28,9 @@ with open(infile) as f:
        seq = splt[2]
        dp = splt[3]
        depth = float(dp.split(':')[2])
+      #  scapp runs into error if depth is 0 (divisionbyzero) --> change to really low
+       if depth==0:
+        depth=0.0001
        seqs_dict[name] = (len(seq),depth,seq)
     if splt[0] == 'L':
       headers[splt[1]] = headers.get(splt[1],list())

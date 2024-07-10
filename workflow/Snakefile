@@ -1,0 +1,43 @@
+# def get_input_fastqs(wildcards):
+#     return config["samples"][wildcards.sample]
+
+from os import path
+
+samplename=config.get('sample', [])
+rule all:
+    input:
+        lambda wildcards: expand("results/{sample}/{sample}_filtered.fastq.gz", sample=samplename),
+        lambda wildcards: expand("results/{sample}/{sample}.kmadb.bam", sample=samplename),
+        lambda wildcards: expand("results/{sample}/{sample}_rep.resf.bam", sample=samplename),
+        lambda wildcards: expand("results/{sample}/NDARO/{sample}_NDARO.bam", sample=samplename),
+        lambda wildcards: expand("results/{sample}/{sample}_rep.pointf.bam", sample=samplename),
+        lambda wildcards: expand("results/{sample}/Flye/assembly.fasta", sample=samplename),
+        lambda wildcards: expand("results/{sample}/Medaka/consensus.fasta", sample=samplename),
+        lambda wildcards: expand("results/{sample}/MapToAssemb/{sample}_assembly.bam", sample=samplename),
+        lambda wildcards: expand("results/{sample}/MapToAssemb/{sample}_assembly.bam.bai", sample=samplename),
+        lambda wildcards: expand("results/{sample}/Medaka/consensus.fasta.fai", sample=samplename),
+        lambda wildcards: expand("results/{sample}/SCAPP/assembly_graph.confident_cycs.fasta", sample=samplename),
+        lambda wildcards: expand("results/{sample}/FlyeClassify/{sample}_assembly.bam", sample=samplename),
+        lambda wildcards: expand("results/{sample}/FlyeClassify/{sample}_ResF.bam", sample=samplename),
+        lambda wildcards: expand("results/{sample}/FlyeClassify/{sample}_NDARO.bam", sample=samplename),
+        lambda wildcards: expand("results/{sample}/FlyeClassify/{sample}_PointF.bam", sample=samplename),
+        # lambda wildcards: expand("results/{sample}/Ecoli/{sample}_ecolreads.fastq.gz", sample=samplename),
+        # lambda wildcards: expand("results/{sample}/Ecoli/Flye_{sample}/assembly.fasta", sample=samplename),
+        lambda wildcards: expand("results/{sample}/DAS_Tool/DASdone", sample=samplename)
+        
+
+
+# rule all:
+#     input:
+#         expand("results/{sample}/{sample}_filtered.fastq", sample=config["samples"])
+
+include: "rules/read_qc.smk"
+include: "rules/kraken2.smk"
+include: "rules/kma.smk"
+include: "rules/flye.smk"
+include: "rules/map_assembly.smk"
+include: "rules/scapp.smk"
+include: "rules/classify_assembly.smk"
+# include: "rules/Ecoli_strain_assembly.smk"
+include: "rules/binning.smk"
+include: "rules/methylation.smk"
