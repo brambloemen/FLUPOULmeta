@@ -1,5 +1,5 @@
-threads: 30
-memory: 200000
+threads: 24
+memory: 350000
 jobs: 1
 model: "r1041_e82_400bps_sup_v5.0.0"
 

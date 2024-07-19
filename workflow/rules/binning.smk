@@ -44,7 +44,7 @@ rule metabat:
 #         touch {output.binning_done}
 #         """
 
-rule medaka_contigbintsvs:
+rule metabat_contigbintsvs:
     input:
         metabat="results/{sample}/MetaBAT/metabat_done"
     output:
@@ -71,7 +71,7 @@ rule nanomotif_discovery:
     log:
       "results/{sample}/logs/nanomotif_disc.log"
     conda:
-      "../envs/modkit.yaml"
+      "../envs/nanomotif.yaml"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -92,7 +92,7 @@ rule nanomotif_include:
     log:
       "results/{sample}/logs/nanomotif_include.log"
     conda:
-      "../envs/modkit.yaml"
+      "../envs/nanomotif.yaml"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -103,6 +103,8 @@ rule nanomotif_include:
       nanomotif include_contigs --motifs_scored {input.motifsscored} \
       --bin_motifs {input.binmotifs} --contig_bins {input.metabatbins} \
       --out {params.outdir} -t {resources.cpus_per_task} --run_detect_contamination
+      mv {params.outdir}/new_contig_bin.tsv {params.outdir}/new_contig_bin.tmp.tsv
+      tail -n +2 {params.outdir}/new_contig_bin.tmp.tsv > {output.newbins}
       """
 
 rule dastool:
@@ -112,6 +114,7 @@ rule dastool:
         nanomotifbins="results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
     output:
         DASdone="results/{sample}/DAS_Tool/DASdone",
+        bins="results/{sample}/DAS_Tool/DASTool_DASTool_bins/",
         ctg2bin="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
     log:
       "results/{sample}/logs/DAStool.log"
@@ -127,4 +130,20 @@ rule dastool:
       """
       DAS_Tool -i {input.metabatbins},{input.nanomotifbins} -c {input.fasta} \
       -o {params.outdir} --threads {resources.cpus_per_task} {params.params} 2>{log} && touch {output.DASdone}
+      """
+
+rule checkm:
+    input:
+        "results/{sample}/DAS_Tool/DASTool_DASTool_bins/"
+    output:
+        checkm="results/{sample}/CheckM/CheckM_summary.txt"
+    log:
+      "results/{sample}/logs/CheckM.log"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    shell:
+      """
+      ml load hmmer prodigal pplacer CheckM
+      checkm lineage_wf -t{resources.cpus_per_task} -x fa {input} results/{wildcards.sample}/CheckM --pplacer_threads {resources.cpus_per_task} > {output}
       """

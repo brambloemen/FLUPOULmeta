@@ -13,7 +13,7 @@ rule Flye_kma_classify:
     log: "logs/Flye_kma_{sample}.log"
     shell:
         """
-        ml load kma/1.4.12a
+        ml load kma/1.4.15
         kma -i {input} -o {output.res} -t {resources.cpus_per_task} -t_db {params.database} {params.map} -sam > {output.sam} 2>{log}
         touch {output.res}
         """
@@ -50,7 +50,7 @@ rule Flye_kma_align_resfinder:
     log: "logs/kma_{sample}.log"
     shell:
         """
-        ml load kma/1.4.12a
+        ml load kma/1.4.15
         kma -i {input} -o {output.res} -t {resources.cpus_per_task} -t_db {params.database} {params.map} -sam > {output.sam} 2>{log}
         touch {output.res}
         """
@@ -76,6 +76,43 @@ rule Flye_kma_ResF_repair_header:
         samtools index -@{resources.cpus_per_task} {output.bam}
         """
 
+rule Flye_kma_align_NDARO:
+    input:
+        assembly="results/{sample}/Medaka/consensus.fasta"
+    output:
+        sam=temp("results/{sample}/FlyeClassify/{sample}_NDARO.sam"),
+        res="results/{sample}/FlyeClassify/{sample}_NDARO"
+    params:
+        database="/db/gene_detection/NCBI_AMR/kma/ncbi_amr-clustered_80",
+        map="-tmp $(pwd)/ -mem_mode -ID 0.0 -cge -ef -na -nc -nf -verbose 2"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=50000
+    log: "logs/kma/{sample}.log"
+    shell:
+        """
+        ml load kma/1.4.15 samtools/1.17
+        kma -i {input} -o {output.res} -t {resources.cpus_per_task} -t_db {params.database} {params.map} -sam > {output.sam} 2>{log}
+        touch {output.res}
+        """
+
+rule Flye_kma_align_NDARO_samtools:
+    input:
+        sam="results/{sample}/FlyeClassify/{sample}_NDARO.sam"
+    output:
+        bam="results/{sample}/FlyeClassify/{sample}_NDARO.bam"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=20000
+    log: "logs/samtools_{sample}.log"
+    shell:
+        """
+        ml load samtools/1.17
+        samtools view -hb -@{resources.cpus_per_task} -F 0x904 {input.sam} | \
+        samtools sort -@{resources.cpus_per_task} > {output.bam} 2>{log}
+        samtools index -@{resources.cpus_per_task} {output.bam}
+        """
+
 rule Flye_kma_align_pointfinder:
     input:
         assembly="results/{sample}/Medaka/consensus.fasta"
@@ -91,7 +128,7 @@ rule Flye_kma_align_pointfinder:
     log: "logs/kma_{sample}.log"
     shell:
         """
-        ml load kma/1.4.12a
+        ml load kma/1.4.15
         kma -i {input} -o {output.res} -t {resources.cpus_per_task} -t_db {params.database} {params.map} -sam > {output.sam} 2>{log}
         touch {output.res}
         """

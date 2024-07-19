@@ -1,6 +1,6 @@
 rule kraken2:
     input:
-        lambda wildcards: config.get('fastq', '')
+        fastq="results/{sample}/fastq_hq/{sample}.HQ.fastq.gz"
     output:
         report="results/{sample}/{sample}.kreport",
         kraken="results/{sample}/{sample}.kraken",
@@ -38,6 +38,5 @@ rule extract_kraken_reads:
     shell:
         """
         python scripts/extract_kraken_reads.py -k {input.kraken} -s {input.reads} -o tmp.fastq {params} -r {input.report}
-        pigz -p{resources.cpus_per_task} tmp.fastq 
-        mv tmp.fastq.gz {output.filtered_reads}
+        pigz -p{resources.cpus_per_task} tmp.fastq && mv tmp.fastq.gz {output.filtered_reads}
         """

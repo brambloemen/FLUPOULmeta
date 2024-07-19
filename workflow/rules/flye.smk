@@ -35,7 +35,7 @@ rule medaka_mini_align:
         """
         ml load samtools minimap2 medaka
         mini_align -i {input.fastq_proka} -r {input.draft} -m -p {params.bam} -t {resources.cpus_per_task}
-        samtools sort {params.bam} -@{resources.cpus_per_task} -o {output.bam}
+        samtools sort {params.bam}.bam -@{resources.cpus_per_task} -o {output.bam}
         samtools index {output.bam}
         """
 
@@ -56,8 +56,8 @@ rule medaka_consensus:
         """
         ml load samtools minimap2 medaka
         #only polish regions >9999bp, otherwise the consensus stage is slowed down significantly
-        REGIONS=$(awk '$2> 9999' {input.info} | cut -f 1 | awk '{{$1=$1}}1' OFS=' ' | tr '\n' ' ')
-        medaka consensus {input.bam} {output} --model {params.model} --batch 200 --threads {resources.cpus_per_task} -region $REGIONS
+        REGIONS=$(awk 'NR>1 && $2> 9999 {{print $1}}' {input.info} | tr '\n' ' ')
+        medaka consensus {input.bam} {output} --model {params.model} --batch 200 --threads {resources.cpus_per_task} --region $REGIONS
         """
 
 rule medaka_stitch:
