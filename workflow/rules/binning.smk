@@ -59,11 +59,62 @@ rule metabat_contigbintsvs:
         python scripts/ContigBinsTSV.py {params.inputdir} > {output.metabatbins}
         """
 
+rule semibin:
+    input:
+        assembly="results/{sample}/Medaka/consensus.fasta",
+        bam="results/{sample}/MapToAssemb/{sample}_assembly.bam"
+    output:
+        contig_bins="results/{sample}/semibin/contig_bins.tsv",
+        contig_bins_filt="results/{sample}/semibin/contig_bins_binned.tsv"
+    log:
+      "results/{sample}/logs/semibin.log"
+    conda:
+      "../envs/SemiBin.yaml"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    shell:
+      """
+      SemiBin2 single_easy_bin -i {input.assembly} -b {input.bam} -o results/{wildcards.sample}/semibin \
+      --compression=none --sequencing-type long_read --environment global -t {resources.cpus_per_task}
+      grep "\\-1" {output.contig_bins} -v | tail -n +2 > {output.contig_bins_filt}
+      """
+
+rule dastool:
+    input:
+        fasta="results/{sample}/Medaka/consensus.fasta",
+        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv",
+        semibin_bins="results/{sample}/semibin/contig_bins_binned.tsv"
+    output:
+        DASdone="results/{sample}/DAS_Tool/DASdone",
+        bins=directory("results/{sample}/DAS_Tool/DASTool_DASTool_bins/"),
+        ctg2bin="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
+    log:
+      "results/{sample}/logs/DAStool.log"
+    conda:
+      "../envs/DAS_Tool.yaml"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    params:
+        params="--write_bins --write_unbinned --score_threshold=0",
+        outdir="results/{sample}/DAS_Tool/DASTool"
+    shell:
+      """
+      DAS_Tool -i {input.metabatbins},{input.semibin_bins} -c {input.fasta} \
+      -o {params.outdir} --threads {resources.cpus_per_task} {params.params} 2>{log} && touch {output.DASdone}
+      cd {output.bins}
+      if test -f "unbinned.fa"; then
+        awk '/^>/ {{if (seq) close(out); out=substr($0, 2) ".fa"; seq=1}} {{print > out}}' unbinned.fa
+        mv unbinned.fa unbinned.fasta
+      fi
+      """
+
 rule nanomotif_discovery:
     input:
         fasta="results/{sample}/Medaka/consensus.fasta",
         bed="results/{sample}/NanoMotif/{sample}_assembly_modpileup.bed",
-        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv"
+        bins="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
     output:
         binmotifs="results/{sample}/NanoMotif/bin-motifs.tsv",
         motifsscored="results/{sample}/NanoMotif/motifs-scored.tsv",
@@ -79,14 +130,17 @@ rule nanomotif_discovery:
         outdir="results/{sample}/NanoMotif/"
     shell:
       """
-      nanomotif motif_discovery {input} --out {params.outdir} -t {resources.cpus_per_task}
+      nanomotif motif_discovery {input} --out {params.outdir} -t {resources.cpus_per_task} --threshold_methylation_general 0.4 --threshold_methylation_confident 0.5
       """
+    #  defaults thresholds: general 0.7, confident 0.8
+    # --threshold_methylation_general 0.4
+    # --threshold_methylation_confident 0.5
 
 rule nanomotif_include:
     input:
         binmotifs="results/{sample}/NanoMotif/bin-motifs.tsv",
         motifsscored="results/{sample}/NanoMotif/motifs-scored.tsv",
-        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv"
+        bins="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
     output:
         newbins="results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
     log:
@@ -101,37 +155,14 @@ rule nanomotif_include:
     shell:
       """
       nanomotif include_contigs --motifs_scored {input.motifsscored} \
-      --bin_motifs {input.binmotifs} --contig_bins {input.metabatbins} \
-      --out {params.outdir} -t {resources.cpus_per_task} --run_detect_contamination
+      --bin_motifs {input.binmotifs} --contig_bins {input.bins} \
+      --out {params.outdir} -t {resources.cpus_per_task} --run_detect_contamination --save_scores
       mv {params.outdir}/new_contig_bin.tsv {params.outdir}/new_contig_bin.tmp.tsv
       tail -n +2 {params.outdir}/new_contig_bin.tmp.tsv > {output.newbins}
       """
-
-rule dastool:
-    input:
-        fasta="results/{sample}/Medaka/consensus.fasta",
-        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv",
-        nanomotifbins="results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
-    output:
-        DASdone="results/{sample}/DAS_Tool/DASdone",
-        bins="results/{sample}/DAS_Tool/DASTool_DASTool_bins/",
-        ctg2bin="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
-    log:
-      "results/{sample}/logs/DAStool.log"
-    conda:
-      "../envs/DAS_Tool.yaml"
-    resources:
-        cpus_per_task=config['threads'],
-        mem_mb=config['memory']
-    params:
-        params="--write_bins --write_unbinned --score_threshold=0",
-        outdir="results/{sample}/DAS_Tool/DASTool"
-    shell:
-      """
-      DAS_Tool -i {input.metabatbins},{input.nanomotifbins} -c {input.fasta} \
-      -o {params.outdir} --threads {resources.cpus_per_task} {params.params} 2>{log} && touch {output.DASdone}
-      """
-
+#  --min_motif_comparisons 5 --mean_methylation_cutoff 0.1 --n_motif_contig_cutoff 10 --n_motif_bin_cutoff 500
+# --ambiguous_motif_percentage_cutoff 0.4
+# 
 rule checkm:
     input:
         "results/{sample}/DAS_Tool/DASTool_DASTool_bins/"

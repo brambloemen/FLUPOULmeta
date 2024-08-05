@@ -1,8 +1,9 @@
 import json
-from pickle import FALSE
 import pysam
+from tqdm import tqdm
 import argparse, sys, csv, re, io
 import pandas as pd
+import numpy as np
 from collections import defaultdict, namedtuple
 from contextlib import redirect_stdout
 
@@ -67,12 +68,12 @@ def extract_arg_name(string):
 
 
 """
-Linking AMR genes to taxonomic classification results - read mapping based
+Linking AMR genes to taxonomic classification results
 """
 class AMRlinker:
 
     Query_taxamap = namedtuple('Query_taxamap', ['Template', 'Query_Length_taxa', "Temp_Align_Start", "Temp_Align_End", "Observed_Templ_Length", "ExactMatch_bp_taxa", "Template_Length"])
-    Query_NDAROmap = namedtuple('Query_NDAROmap', ["Query_Length_NDARO", "ExactMatch_bp_NDARO", "ARG_Length"])
+    Query_NDAROmap = namedtuple('Query_NDAROmap', ["Query_Align_Start_NDARO", "Query_Align_End_NDARO", "Query_Length_NDARO", "ExactMatch_bp_NDARO", "ARG_Length"])
     Query_taxamap_NDAROmap = namedtuple("Query_taxamap_NDAROmap", Query_taxamap._fields + Query_NDAROmap._fields)
 
 
@@ -89,7 +90,7 @@ class AMRlinker:
 
         taxa_mapping = defaultdict(lambda: self.Query_taxamap)
 
-        for query in align_taxa:
+        for query in tqdm(align_taxa, desc="Parsing read mapping to taxonomic references"):
             n = query.query_name
             query_l = query.query_length
             Template1 = query.reference_name
@@ -117,7 +118,7 @@ class AMRlinker:
         align_amr = pysam.AlignmentFile(self.NDARO_amr_bam, "rb")
         align_amr_refseq = {ref["SN"]: ref["LN"] for ref in align_amr.header.to_dict()["SQ"]}
 
-        for alignment in align_amr:
+        for alignment in tqdm(align_amr, desc="Parsing read mapping to NDARO database"):
             n = alignment.query_name
             if alignment.reference_name is None:
                 continue
@@ -126,6 +127,8 @@ class AMRlinker:
             Template2 = alignment.reference_name
             cigarEQ = alignment.get_cigar_stats()[0][7]
             Template2_l = align_amr_refseq.get(Template2, None)
+            start = alignment.query_alignment_start
+            end = alignment.query_alignment_end
             if 100 * alignment.reference_length < tc_arg or 100 * cigarEQ / alignment.reference_length < tid_arg:
                 continue
             
@@ -135,7 +138,8 @@ class AMRlinker:
                 arg_name = mapping[arg]["gene"]
                 allele = mapping[arg]["allele"]
                 # ARG mapping is not 1-to-1 e.g. contig can hold 2 or more ARGs -> nested dictionary
-                NDARO_readmapping[n][(arg_name, allele)] = self.Query_NDAROmap(l, cigarEQ, Template2_l)
+                # second-level dictionary keys is tuple of arg + allele
+                NDARO_readmapping[n][(arg_name, allele)] = self.Query_NDAROmap(start, end, l, cigarEQ, Template2_l)
 
         return NDARO_readmapping  
 
@@ -157,6 +161,17 @@ class AMRlinker:
                     taxa_mapping[n] = self.Query_taxamap(None, NDARO_mapping[n][allele].Query_Length_NDARO, None, None, None, None, None)
                     self.AMRlinks[n][allele] = self.Query_taxamap_NDAROmap(*(taxa_mapping[n] + NDARO_mapping[n][allele]))
         
+        # add contigs/reads not mapped to any AMR gene
+        for n in taxa_mapping.keys():
+
+            if n in NDARO_mapping.keys():
+                continue
+            else:
+                arg = ""
+                allele = ""
+                NDARO_mapping[n][(arg, allele)] = self.Query_NDAROmap(None, None, None, None, None)
+                self.AMRlinks[n][(arg, allele)] = self.Query_taxamap_NDAROmap(*(taxa_mapping[n] + NDARO_mapping[n][(arg, allele)]))
+
         flattened_data = []
         for query, arg_dict in self.AMRlinks.items():
             for (arg_name, allele), values in arg_dict.items():
@@ -165,6 +180,7 @@ class AMRlinker:
         columns = ['Query', 'ARG', 'Allele'] + list(self.Query_taxamap_NDAROmap._fields)
         self.AMRlinks = pd.DataFrame(flattened_data, columns=columns)
         
+        # when analyzing read-based AMR detection, group results per ARG and taxonomic tempalte
         if self.mode == "reads":
             grouped = self.AMRlinks.groupby(["Template", "Template_Length", "ARG", "Allele", "ARG_Length"], dropna=False)
                 
@@ -173,35 +189,49 @@ class AMRlinker:
             Observed_Templ_Depth = grouped['Observed_Templ_Length'].sum()
             ExactMatch_Taxa = grouped['ExactMatch_bp_taxa'].sum()
             ExactMatch_NDARO = grouped['ExactMatch_bp_NDARO'].sum()
+            # start and end pos of mapping are dropped for reads --> multiple covered intervals on templates = multiple start and end points
 
             self.AMRlinks = pd.DataFrame({'n_links': n_links, 'Total_Query_Length': Total_Query_Length, 'Observed_Templ_Depth' : Observed_Templ_Depth, 'ExactMatch_Taxa' : ExactMatch_Taxa, 'ExactMatch_NDARO' : ExactMatch_NDARO})
             self.AMRlinks = self.AMRlinks.reset_index()
 
 
-    def get_covinfo(self, coverage_bam):
+    def get_covinfo(self, coverage_file):
 
-        cov_output = pysam.coverage(coverage_bam)
-        coverage_data = []
-        for line in cov_output.split('\n'):
-        # for line in cov_output:
-            if line and not line.startswith('#'):
-                fields = line.split('\t')
-                rname = fields[0]
-                converted_fields = [rname] + [int(x) for x in fields[1:5]] + [float(x) for x in fields[5:]]
-                coverage_data.append(converted_fields)
+        if coverage_file.endswith(".bam"):
+            cov_output = pysam.coverage(coverage_file)
+            coverage_data = []
+            for line in cov_output.split('\n'):
+            # for line in cov_output:
+                if line and not line.startswith('#'):
+                    fields = line.split('\t')
+                    rname = fields[0]
+                    converted_fields = [rname] + [int(x) for x in fields[1:5]] + [float(x) for x in fields[5:]]
+                    coverage_data.append(converted_fields)
 
-        columns = ['rname', 'startpos', 'endpos', 'numreads', 'covbases', 'coverage', 'meandepth', 'meanbaseq', 'meanmapq']
-        coverage_data = pd.DataFrame(coverage_data, columns=columns)
+            columns = ['rname', 'startpos', 'endpos', 'numreads', 'covbases', 'coverage', 'meandepth', 'meanbaseq', 'meanmapq']
+            coverage_data = pd.DataFrame(coverage_data, columns=columns)
+
+        elif coverage_file.endswith(".res"):
+            coverage_data = pd.read_csv(coverage_file, sep="\t").drop(["q_value", "p_value", "Score", "Expected"], axis=1)
+            coverage_data = coverage_data.add_suffix("_kma_res")
+            coverage_data = coverage_data.rename(columns={"#Template_kma_res": "rname"})
 
         # if in assembly mode, we want coverage of contigs (=queries)
         if self.mode == "assembly":
             merged_df = self.AMRlinks.merge(coverage_data, left_on="Query", right_on="rname", how="outer")
             self.AMRlinks = merged_df
             self.AMRlinks["Query"] = self.AMRlinks["Query"].fillna(self.AMRlinks["rname"])
+            self.AMRlinks = self.AMRlinks.drop("rname", axis=1)
+
         # in read mode, match to the taxonomic template mapping
-        else:
+        elif self.mode == "reads":
             merged_df = self.AMRlinks.merge(coverage_data, left_on="Template", right_on="rname", how="outer")
             self.AMRlinks = merged_df
+            # in case res file is used instead of bam file (will be faster as res summarizes mapping results)
+            if coverage_file.endswith(".res"):
+                self.AMRlinks["Template"] = self.AMRlinks["Template"].fillna(self.AMRlinks["rname"])
+                self.AMRlinks["Template_Length"] = self.AMRlinks["Template_Length"].fillna(self.AMRlinks["Template_length_kma_res"])
+                self.AMRlinks = self.AMRlinks.drop(["rname", "Template_length_kma_res"], axis= 1)
 
     
     def get_genomad_info(self):
@@ -210,7 +240,33 @@ class AMRlinker:
         if self.mode == "reads":
             raise ValueError("Genomad not implemented for reads")
         
-        plasmid_summary = self.genomad_dir.rstrip("/") + "/consensus_summary/consensus_plasmid_summary.tsv"
-        virus_summary = self.genomad_dir.rstrip("/") + "/consensus_summary/consensus_virus_summary.tsv"
+        plasmid_sum_dir = self.genomad_dir.rstrip("/") + "/consensus_summary/consensus_plasmid_summary.tsv"
+        virus_sum_dir = self.genomad_dir.rstrip("/") + "/consensus_summary/consensus_virus_summary.tsv"
+
+        plasmid_sum = pd.read_csv(plasmid_sum_dir, sep="\t")
+        plasmid_sum = plasmid_sum.drop("length", axis=1).add_suffix("_plasmid")
+        merged_df_plas = self.AMRlinks.merge(plasmid_sum, left_on="Query", right_on="seq_name_plasmid", how="outer")
+        self.AMRlinks = merged_df_plas
+
+        virus_sum =pd.read_csv(virus_sum_dir, sep="\t").drop("length", axis=1).add_suffix("_virus")
+        # split seq_name_virus from contig, take start and end position for provirus sequences
+        virus_sum[["contig_name", "seq_name_virus"]] = virus_sum["seq_name_virus"].str.split("|", expand=True)
+        virus_sum[["seq_name_virus", "virus_startp", "virus_endp"]] = virus_sum["seq_name_virus"].str.split("_", expand=True)
+        merged_df_vir = self.AMRlinks.merge(virus_sum, left_on="Query", right_on="contig_name", how="outer")
+        self.AMRlinks = merged_df_vir 
+
+
+    def get_binning_info(self, binning_dir):
+        if binning_dir is None:
+            raise ValueError("Binning results tsv is not available.")
+        if self.mode == "reads":
+            raise ValueError("Binning not implemented for reads")
+
+        binning_res = pd.read_csv(binning_dir, sep="\t", names=["Contig", "Bin"])
+
+        merged_df_bin = self.AMRlinks.merge(binning_res, left_on="Query", right_on="Contig", how="outer")
+        self.AMRlinks = merged_df_bin
+
+
 
 
