@@ -10,7 +10,7 @@ rule merge_assembly_results:
     log: "logs/merge_assemb_results/{sample}.log"
     resources:
         cpus_per_task=1,
-        mem_mb=100000
+        mem_mb=min(30000, config['memory'])
     # shell:
     #     """
     #     echo test

@@ -256,16 +256,25 @@ class AMRlinker:
         self.AMRlinks = merged_df_vir 
 
 
-    def get_binning_info(self, binning_dir):
-        if binning_dir is None:
+    def get_binning_info(self, binning_fp):
+        if binning_fp is None:
             raise ValueError("Binning results tsv is not available.")
         if self.mode == "reads":
             raise ValueError("Binning not implemented for reads")
 
-        binning_res = pd.read_csv(binning_dir, sep="\t", names=["Contig", "Bin"])
+        binning_res = pd.read_csv(binning_fp, sep="\t", names=["Contig", "Bin"])
 
         merged_df_bin = self.AMRlinks.merge(binning_res, left_on="Query", right_on="Contig", how="outer")
         self.AMRlinks = merged_df_bin
+
+    def get_mobileOGdb_info(self, mobileOGdb_fp):
+        if mobileOGdb_fp is None:
+            raise ValueError("Binning results tsv is not available.")
+        if self.mode == "reads":
+            raise ValueError("Binning not implemented for reads")
+        
+        mobileOGdb = pd.read_csv(mobileOGdb_fp)
+        self.AMRlinks_MGEs = self.AMRlinks.merge(mobileOGdb, left_on="Query", right_on="Specific Contig", how="outer")
 
 
 
