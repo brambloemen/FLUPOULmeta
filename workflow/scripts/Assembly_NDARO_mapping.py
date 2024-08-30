@@ -33,7 +33,10 @@ def parse_taxa(taxa_bam):
 
     return align_taxa_contigs
 
-def parse_AMR(amr_bam, processed_taxa_reads, tid_arg, tc_arg, mapping):
+def parse_assembly_NDARO_bam(amr_bam, align_taxa_contigs, tid_arg, tc_arg, mappingfile):
+
+    mapping = load_mapping(mappingfile)
+
     rows = []
     pattern = r"seq_\d{6}$"
     align_amr = pysam.AlignmentFile(amr_bam, "rb")
@@ -50,8 +53,8 @@ def parse_AMR(amr_bam, processed_taxa_reads, tid_arg, tc_arg, mapping):
         if 100 * alignment.reference_length < tc_arg or 100 * cigarEQ / alignment.reference_length < tid_arg:
             continue
 
-        if n in processed_taxa_reads:
-            Template1, contig_l, Aligned_Contig_l, Template1_cigarEQ, Template1_l = processed_taxa_reads[n]
+        if n in align_taxa_contigs:
+            Template1, contig_l, Aligned_Contig_l, Template1_cigarEQ, Template1_l = align_taxa_contigs[n]
             arg_match = re.search(pattern, Template2)
             if arg_match:
                 arg = arg_match.group()
@@ -73,10 +76,10 @@ def parse_AMR(amr_bam, processed_taxa_reads, tid_arg, tc_arg, mapping):
 
 def main():
     args = parse_arguments().parse_args()
-    mapping = load_mapping('/db/gene_detection/NCBI_AMR/mapping_full.json')
+    mappingfile = '/db/gene_detection/NCBI_AMR/mapping_full.json'
     
-    processed_taxa_reads = parse_taxa(args.bam_taxa)
-    df = parse_AMR(args.AMR_bam, processed_taxa_reads, args.tid_arg, args.tc_arg, mapping)
+    align_taxa_contigs = parse_taxa(args.bam_taxa)
+    df = parse_assembly_NDARO_bam(args.AMR_bam, align_taxa_contigs, args.tid_arg, args.tc_arg, mappingfile)
 
     df.sort_values(by="Contig", inplace=True)
     

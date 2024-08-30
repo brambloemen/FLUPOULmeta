@@ -26,9 +26,12 @@ rule all:
         lambda wildcards: expand("results/{sample}/DAS_Tool/DASdone", sample=samplename),
         lambda wildcards: expand("results/{sample}/genomad_output", sample=samplename),
         lambda wildcards: expand("results/{sample}/CheckM/CheckM_summary.txt", sample=samplename),
+        lambda wildcards: expand("results/{sample}/GTDBtk", sample=samplename),
         lambda wildcards: expand("results/{sample}/NanoMotif/bin/new_contig_bin.tsv", sample=samplename),
-        lambda wildcards: expand("results/{sample}/Summary/Assembly_AMRlinks.tsv", sample=samplename),
-        lambda wildcards: expand("results/{sample}/mobileOGdb/DASTool_proteins.mobileOG.Alignment.Out.csv", sample=samplename)
+        # lambda wildcards: expand("results/{sample}/Summary/Assembly_AMRlinks.tsv", sample=samplename),
+        lambda wildcards: expand("results/{sample}/mobileOGdb/DASTool_proteins.mobileOG.Alignment.Out.csv", sample=samplename),
+        lambda wildcards: expand("results/{sample}/GTDBtk_NM", sample=samplename),
+        lambda wildcards: expand("results/{sample}/CheckM_NM", sample=samplename)
         
 
 
@@ -47,5 +50,5 @@ include: "rules/classify_assembly.smk"
 include: "rules/binning.smk"
 include: "rules/methylation.smk"
 include: "rules/genomad.smk"
-include: "rules/merge_results.smk"
+# include: "rules/merge_results.smk"
 include: "rules/mobileOGdb.smk"

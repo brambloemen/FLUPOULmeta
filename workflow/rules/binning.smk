@@ -24,12 +24,12 @@ rule metabat:
 #     input:
 #         txt="results/{sample}/MetaBAT/depths.txt",
 #         fasta="results/{sample}/Flye/assembly.fasta",
-#         graph="results/{sample}/Flye/assembly.gfa",
 #         bam="results/{sample}/Flye/{sample}_assembly.bam"
 #     output:
-#         binning_done="results/{sample}/GraphMB/GraphMB_done"
+#         outputdir=directory("results/{sample}/GraphMB/"),
+#         bins_dir=directory("results/{sample}/GraphMB/_bins/")
 #     log:
-#         "results/{sample}/logs/GraphMB_done.log"
+#         "results/{sample}/logs/GraphMB.log"
 #     conda:
 #         "../envs/graphmb.yaml"
 #     resources:
@@ -37,10 +37,12 @@ rule metabat:
 #         mem_mb=config['memory']
 #     params:
 #         assembdir="results/{sample}/Flye/",
-#         outputdir="results/{sample}/GraphMB/"
+#         params="--assembly_type flye --vamb --minbin 250000 --mincontig 3000 --seed 37"
 #     shell:
 #         """
-#         graphmb --assembly {params.assembdir} --outdir {params.outputdir} --assembly_name {input.fasta} --graph_file {input.graph} --depth {input.txt} --seed 37 --numcores {resources.cpus_per_task}
+#         cp {input.txt} {params.assembdir}/depths.txt
+#         graphmb --assembly {params.assembdir} --outdir {output.outputdir} --assembly_name {input.fasta} --depth depths.txt \
+#         --numcores {resources.cpus_per_task} {params.params}
 #         touch {output.binning_done}
 #         """
 
@@ -163,10 +165,12 @@ rule nanomotif_include:
 #  --min_motif_comparisons 5 --mean_methylation_cutoff 0.1 --n_motif_contig_cutoff 10 --n_motif_bin_cutoff 500
 # --ambiguous_motif_percentage_cutoff 0.4
 # 
+# TODO: update bin fastas with nanomotif binning; perform checkM and gtdb on these updated bins
 rule checkm:
     input:
         "results/{sample}/DAS_Tool/DASTool_DASTool_bins/"
     output:
+        outdir=directory("results/{sample}/CheckM"),
         checkm="results/{sample}/CheckM/CheckM_summary.txt"
     log:
       "results/{sample}/logs/CheckM.log"
@@ -176,5 +180,70 @@ rule checkm:
     shell:
       """
       ml load hmmer prodigal pplacer CheckM
-      checkm lineage_wf -t{resources.cpus_per_task} -x fa {input} results/{wildcards.sample}/CheckM --pplacer_threads {resources.cpus_per_task} > {output}
+      checkm lineage_wf -t{resources.cpus_per_task} -x fa {input} {output.outdir} --pplacer_threads {resources.cpus_per_task} > {output.checkm}
+      """
+    
+rule gtdbtk:
+    input:
+        "results/{sample}/DAS_Tool/DASTool_DASTool_bins/"
+    output:
+        directory("results/{sample}/GTDBtk")
+    log:
+      "results/{sample}/logs/gtdbtk.log"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    shell:
+      """
+      ml load hmmer prodigal pplacer gtdb-tk fastani fasttree
+      gtdbtk classify_wf --genome_dir {input} --out_dir {output} --cpus {resources.cpus_per_task} --pplacer_cpus 1 \
+      --extension fa --skip_ani_screen
+      """
+
+rule nanomotif_bins:
+    input:
+        fasta_file = "results/{sample}/Medaka/consensus.fasta",
+        contig_bin = "results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
+    output:
+        outdir = directory("results/{sample}/NanoMotif/bin_fastas/")
+    log:
+        "results/{sample}/logs/nanomotif_bins.log"
+    resources:
+        cpus_per_task=1,
+        mem_mb=10000
+    script:
+        "../scripts/extract_bins_fastas.py"
+
+rule checkm_NM:
+    input:
+        "results/{sample}/NanoMotif/bin_fastas/"
+    output:
+        outdir=directory("results/{sample}/CheckM_NM"),
+        checkm="results/{sample}/CheckM_NM/CheckM_summary.txt"
+    log:
+      "results/{sample}/logs/CheckM_NM.log"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    shell:
+      """
+      ml load hmmer prodigal pplacer CheckM
+      checkm lineage_wf -t{resources.cpus_per_task} -x fa {input} {output.outdir} --pplacer_threads {resources.cpus_per_task} > {output.checkm}
+      """
+    
+rule gtdbtk_NM:
+    input:
+        "results/{sample}/NanoMotif/bin_fastas/"
+    output:
+        directory("results/{sample}/GTDBtk_NM")
+    log:
+      "results/{sample}/logs/gtdbtk_NM.log"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    shell:
+      """
+      ml load hmmer prodigal pplacer gtdb-tk fastani fasttree
+      gtdbtk classify_wf --genome_dir {input} --out_dir {output} --cpus {resources.cpus_per_task} --pplacer_cpus 1 \
+      --extension fa --skip_ani_screen
       """

@@ -4,14 +4,14 @@ from utils import AMRlinker
 try:
     # Verify paths
     print(f"Assembled BAM: {snakemake.input['assemb_bam']}")
-    print(f"NDARO BAM: {snakemake.input['NDARO_bam']}")
+    print(f"ResF BAM: {snakemake.input['ResF_bam']}")
     print(f"Genomad output directory: {snakemake.input['genomad_outputdir']}")
     print(f"Covinfo: {snakemake.input['covinfo']}")
     print(f"Binning results: {snakemake.input['binning_results']}")
     print(f"Output file: {snakemake.output[0]}")
 
     # Initialize the AMRlinker object
-    test_parser = AMRlinker(snakemake.input["assemb_bam"], snakemake.input["NDARO_bam"], genomad_dir=snakemake.input["genomad_outputdir"])
+    test_parser = AMRlinker(snakemake.input["assemb_bam"], snakemake.input["ResF_bam"], genomad_dir=snakemake.input["genomad_outputdir"])
 
     # Perform matching
     test_parser.match()
