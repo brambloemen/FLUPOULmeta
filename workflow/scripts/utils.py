@@ -417,7 +417,9 @@ class AMRlinker:
 
         # re-iterate process but now for plasmid contigs identified by scapp
         scapp_plasmid_ctgs = AMRlinks_remaining.merge(self.SCAPP_contigs, left_on="Query", right_on="SCAPP_contig", how="right")
+        # if unbinned contig, create new RNODE bin (to group all contigs belonging to a same plasmid into single node)
         scapp_plasmid_ctgs["Bin"] = np.where(scapp_plasmid_ctgs["Bin"] == scapp_plasmid_ctgs["Query"], scapp_plasmid_ctgs["SCAPP_plasmid"], scapp_plasmid_ctgs["Bin"])
+        scapp_plasmid_ctgs["Query"] = np.where(scapp_plasmid_ctgs["Bin"] == scapp_plasmid_ctgs["Query"], scapp_plasmid_ctgs["SCAPP_plasmid"], scapp_plasmid_ctgs["Bin"])
         scapp_plasmid_ctgs["ARG_on_MGE"] = np.where(scapp_plasmid_ctgs["ARG"].isna(), 0, 1)
         scapp_plasmid_ctgs["MGE"] = "Plasmid"
         scapp_plasmid_ctgs["Node"] = scapp_plasmid_ctgs["ARG"] + "_plasmid"
@@ -505,7 +507,11 @@ class AMRlinker:
         #         for j in range(i + 1, len(nodes)):
         #             if nodes[i] != nodes[j] and nodes[i]:
         #                 self.AMRlinks_graph.add_edge(nodes[i], nodes[j])
-        
+
+        for node, attr in self.AMRlinks_graph.nodes(data=True):
+            if 'shape' not in attr:
+                print(f"Node {node} is missing the 'shape' attribute.")
+                
     def plot_ARG_graph(self, output, seed=37, figsize=20):
 
         G = self.AMRlinks_graph
