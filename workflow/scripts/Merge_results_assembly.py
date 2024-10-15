@@ -1,5 +1,6 @@
 # from snakemake.script import snakemake
 from utils import AMRlinker
+import networkx as nx
 
 try:
     # Verify paths
@@ -27,16 +28,25 @@ try:
     # Get binning information
     test_parser.get_binning_info(snakemake.input["binning_results"])
 
-    # Output to CSV
-    test_parser.AMRlinks.to_csv(snakemake.output[0], sep="\t")
-
+    # Scapp results
     scapp_fp = snakemake.input['scapp'].rstrip("/assembly_graph.confident_cycs.fasta")
     test_parser.get_scapp_info(scapp_fp)
+
+    # classification
     test_parser.get_bin_classification_gtdb(f"{snakemake.input['gtdb']}/gtdbtk.bac120.summary.tsv")
+
+    # Output to CSV
+    test_parser.AMRlinks.to_csv(snakemake.output[0], sep="\t")
 
     test_parser.create_graph_ARGlinks()
 
     test_parser.plot_ARG_graph(snakemake.output[1], figsize=30)
+    nx.write_graphml(test_parser.AMRlinks_graph, snakemake.output[2])
+
+    read_parser = AMRlinker(snakemake.input["taxo_mapping_bam"], snakemake.input["reads_resf_bam"], mode="reads")
+    read_parser.match()
+    read_parser.get_covinfo(snakemake.input["reads_resf_res"])  
+    read_parser.AMRlinks.to_csv(snakemake.output[3], sep="\t")  
 
 
 except Exception as e:

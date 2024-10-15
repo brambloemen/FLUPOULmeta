@@ -4,49 +4,50 @@ rule metabat:
         bam="results/{sample}/MapToAssemb/{sample}_assembly.bam"
     output:
         txt="results/{sample}/MetaBAT/depths.txt",
-        binning_done="results/{sample}/MetaBAT/metabat_done"
+        outputdir=directory("results/{sample}/MetaBAT/BIN/")
     log:
         "results/{sample}/logs/metabat_done.log"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
-    params:
-        outputdir="results/{sample}/MetaBAT/BIN/bin"
     shell:
         """
         ml load metabat2
         jgi_summarize_bam_contig_depths --outputDepth {output.txt} {input.bam} 2>{log}
-        metabat2 -v -t {resources.cpus_per_task} -o {params.outputdir} -i {input.assembly} -a {output.txt} 2>>{log}
+        metabat2 -v -t {resources.cpus_per_task} -o {output.outputdir} -i {input.assembly} -a {output.txt} 2>>{log}
         touch {output.binning_done}
         """
 
-# rule graphmb:
-#     input:
-#         txt="results/{sample}/MetaBAT/depths.txt",
-#         fasta="results/{sample}/Flye/assembly.fasta",
-#         bam="results/{sample}/Flye/{sample}_assembly.bam"
-#     output:
-#         outputdir=directory("results/{sample}/GraphMB/"),
-#         bins_dir=directory("results/{sample}/GraphMB/_bins/")
-#     log:
-#         "results/{sample}/logs/GraphMB.log"
-#     conda:
-#         "../envs/graphmb.yaml"
-#     resources:
-#         cpus_per_task=config['threads'],
-#         mem_mb=config['memory']
-#     params:
-#         assembdir="results/{sample}/Flye/",
-#         params="--assembly_type flye --vamb --minbin 250000 --mincontig 3000 --seed 37"
-#     shell:
-#         """
-#         cp {input.txt} {params.assembdir}/depths.txt
-#         graphmb --assembly {params.assembdir} --outdir {output.outputdir} --assembly_name {input.fasta} --depth depths.txt \
-#         --numcores {resources.cpus_per_task} {params.params}
-#         touch {output.binning_done}
-#         """
+rule graphmb:
+    input:
+        txt="results/{sample}/MetaBAT/depths.txt",
+        fasta="results/{sample}/Flye/assembly.fasta",
+        bam="results/{sample}/MapToAssemb/{sample}_assembly.bam"
+    output:
+        outputdir=directory("results/{sample}/GraphMB/"),
+        bins_dir=directory("results/{sample}/GraphMB/_bins/"),
+        contigbins="results/{sample}/GraphMB/grapmb_contig2bin.tsv"
+    log:
+        "results/{sample}/logs/GraphMB.log"
+    conda:
+        "../envs/graphmb.yaml"
+    resources:
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
+    params:
+        assembdir="results/{sample}/Flye/",
+        params="--assembly_type flye --vamb --minbin 250000 --mincontig 3000 --seed 37"
+    shell:
+        """
+        cp {input.txt} {params.assembdir}/depths.txt
+        # to update:
+        graphmb --assembly {params.assembdir} --outdir {output.outputdir} --assembly_name assembly.fasta --depth depths.txt \
+        --contignodes --numcores {resources.cpus_per_task} {params.params}
+        grep -v '@' {output.outputdir}/_best_contig2bin.tsv > {output.contigbins}
+        """
 
 rule metabat_contigbintsvs:
+    # TODO: process bins from other binning tools with the same script to generate contig_bins.tsv
     input:
         metabat="results/{sample}/MetaBAT/metabat_done"
     output:
@@ -67,7 +68,8 @@ rule semibin:
         bam="results/{sample}/MapToAssemb/{sample}_assembly.bam"
     output:
         contig_bins="results/{sample}/semibin/contig_bins.tsv",
-        contig_bins_filt="results/{sample}/semibin/contig_bins_binned.tsv"
+        contig_bins_filt="results/{sample}/semibin/contig_bins_binned.tsv",
+        outdir=directory("results/{sample}/semibin")
     log:
       "results/{sample}/logs/semibin.log"
     conda:
@@ -77,7 +79,7 @@ rule semibin:
         mem_mb=config['memory']
     shell:
       """
-      SemiBin2 single_easy_bin -i {input.assembly} -b {input.bam} -o results/{wildcards.sample}/semibin \
+      SemiBin2 single_easy_bin -i {input.assembly} -b {input.bam} -o {output.outdir} \
       --compression=none --sequencing-type long_read --environment global -t {resources.cpus_per_task}
       grep "\\-1" {output.contig_bins} -v | tail -n +2 > {output.contig_bins_filt}
       """
@@ -86,7 +88,8 @@ rule dastool:
     input:
         fasta="results/{sample}/Medaka/consensus.fasta",
         metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv",
-        semibin_bins="results/{sample}/semibin/contig_bins_binned.tsv"
+        semibin_bins="results/{sample}/semibin/contig_bins_binned.tsv",
+        graphmb_bins="results/{sample}/GraphMB/grapmb_contig2bin.tsv"
     output:
         DASdone="results/{sample}/DAS_Tool/DASdone",
         bins=directory("results/{sample}/DAS_Tool/DASTool_DASTool_bins/"),
@@ -103,7 +106,7 @@ rule dastool:
         outdir="results/{sample}/DAS_Tool/DASTool"
     shell:
       """
-      DAS_Tool -i {input.metabatbins},{input.semibin_bins} -c {input.fasta} \
+      DAS_Tool -i {input.metabatbins},{input.semibin_bins},{input.graphmb_bins} -c {input.fasta} \
       -o {params.outdir} --threads {resources.cpus_per_task} {params.params} 2>{log} && touch {output.DASdone}
       cd {output.bins}
       if test -f "unbinned.fa"; then
