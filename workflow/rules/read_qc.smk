@@ -1,3 +1,5 @@
+seqkit=config["tools"]["Seqkit"]["path"]
+
 rule seqkit:
     input:
         lambda wildcards: config.get('fastq', '')
@@ -12,6 +14,6 @@ rule seqkit:
         "logs/seqkit/{sample}.log"
     shell:
         """
-        ml load seqkit
+        export PATH={seqkit}:$PATH
         seqkit seq -m 500 -Q 10 -j 20 {input} -o {output.fastq}
         """

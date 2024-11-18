@@ -1,3 +1,9 @@
+flye=TOOLS["Flye"]["path"]
+minimap2=TOOLS["minimap2"]["path"]
+samtools=TOOLS["Samtools"]["path"]
+htslib=TOOLS["Medaka"]["htslib_path"]
+medaka=TOOLS["Medaka"]["path"]
+
 rule flye_assemble:
     input:
         fastq_proka="results/{sample}/{sample}_filtered.fastq.gz"
@@ -11,11 +17,11 @@ rule flye_assemble:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
     log: "logs/flye/{sample}.log"
+    conda:
+        "../envs/Flye.yaml"
     shell:
         """
-        source /data/brbloemen/mambaforge/etc/profile.d/conda.sh
-        conda deactivate
-        ml load flye/2.9.3
+        export PATH={flye}:$PATH
         flye --nano-hq {input.fastq_proka} {params} --out-dir results/{wildcards.sample}/Flye -t {resources.cpus_per_task}
         """
 
@@ -33,7 +39,8 @@ rule medaka_mini_align:
         mem_mb=config['memory']
     shell:
         """
-        ml load samtools minimap2 medaka
+        export PATH={minimap2}:{samtools}:{htslib}:{medaka}:$PATH
+        source {medaka}/activate
         mini_align -i {input.fastq_proka} -r {input.draft} -m -p {params.bam} -t {resources.cpus_per_task}
         samtools sort {params.bam}.bam -@{resources.cpus_per_task} -o {output.bam}
         samtools index {output.bam}
@@ -54,10 +61,11 @@ rule medaka_consensus:
         model=config['model']
     shell:
         """
-        ml load samtools minimap2 medaka
+        export PATH={minimap2}:{samtools}:{htslib}:{medaka}:$PATH
+        source {medaka}/activate
         #only polish regions >9999bp, otherwise the consensus stage is slowed down significantly
         REGIONS=$(awk 'NR>1 && $2> 9999 {{print $1}}' {input.info} | tr '\n' ' ')
-        medaka consensus {input.bam} {output} --model {params.model} --batch 200 --threads {resources.cpus_per_task} --region $REGIONS
+        medaka inference {input.bam} {output} --model {params.model} --batch 200 --threads {resources.cpus_per_task} --region $REGIONS
         """
 
 rule medaka_stitch:
@@ -71,6 +79,7 @@ rule medaka_stitch:
         mem_mb=24000
     shell:
         """
-        ml load samtools minimap2 medaka
-        medaka stitch {input.probs} {input.draft} {output}
+        export PATH={minimap2}:{samtools}:{htslib}:{medaka}:$PATH
+        source {medaka}/activate
+        medaka sequence {input.probs} {input.draft} {output}
         """

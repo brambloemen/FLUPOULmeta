@@ -1,3 +1,7 @@
+kraken2=config["tools"]["Kraken2"]["path"]
+db=config["tools"]["Kraken2"]["db"]
+krona=config["tools"]["Krona"]["path"]
+
 rule kraken2:
     input:
         fastq="results/{sample}/fastq_hq/{sample}.HQ.fastq.gz"
@@ -8,17 +12,17 @@ rule kraken2:
     params:
         db="/db/kraken2_full/20240113/"
     resources:
-        cpus_per_task=1,
-        mem_mb=50000
+        cpus_per_task=config['threads'],
+        mem_mb=config['memory']
     log:
         "logs/kraken2/{sample}.log"
     shell:
         """
-        ml load kraken2_remote krona/2.7
+        export PATH={kraken2}:{krona}:$PATH
+        source {kraken2}/activate
         mkdir -p results/{wildcards.sample}
         kraken2 --db {params.db} --threads 20 --report {output.report} --output {output.kraken} {input}
         ktImportTaxonomy {output.report} -t 5 -m 3 -o {output.krona}
-        ml -kraken2_remote 
         """
 
 rule extract_kraken_reads:
@@ -35,6 +39,8 @@ rule extract_kraken_reads:
         mem_mb=50000
     log:
         "logs/extract_kraken_reads/{sample}.log"
+    conda:
+        "../envs/FLUPOUL.yaml"
     shell:
         """
         python scripts/extract_kraken_reads.py -k {input.kraken} -s {input.reads} -o tmp.fastq {params} -r {input.report}

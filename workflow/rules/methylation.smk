@@ -15,5 +15,5 @@ rule modkit_pileup:
         outdir="results/{sample}/DAS_Tool/DASTool"
     shell:
       """
-       modkit pileup --filter-threshold 0.7 {input.bam} {output.bed} -t {resources.cpus_per_task}
+      modkit pileup --filter-threshold 0.7 {input.bam} {output.bed} -t {resources.cpus_per_task}
       """

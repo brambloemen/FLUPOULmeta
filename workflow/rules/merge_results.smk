@@ -9,9 +9,10 @@ rule merge_assembly_results:
         gtdb="results/{sample}/GTDBtk_NM",
         taxo_mapping_bam="results/{sample}/{sample}.kmadb.bam",
         reads_resf_bam="results/{sample}/{sample}_rep.resf.bam",
-        reads_resf_res="results/{sample}/{sample}_resf.res"
+        reads_taxo_res="results/{sample}/{sample}_kma"
     output:
         "results/{sample}/Summary/Assembly_AMRlinks.tsv",
+        "results/{sample}/Summary/Assembly_AMRlinks_summary.tsv",
         "results/{sample}/Summary/Assembly_AMRlinks.png",
         "results/{sample}/Summary/{sample}_Assembly_AMRlinks.xml",
         "results/{sample}/Summary/Reads_AMRlinks.tsv"
@@ -19,9 +20,7 @@ rule merge_assembly_results:
     resources:
         cpus_per_task=1,
         mem_mb=min(30000, config['memory'])
-    # shell:
-    #     """
-    #     echo test
-    #     """
+    conda:
+        "../envs/FLUPOUL.yaml"
     script:
         "../scripts/Merge_results_assembly.py"

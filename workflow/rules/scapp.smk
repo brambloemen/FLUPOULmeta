@@ -1,3 +1,6 @@
+minimap2=TOOLS["minimap2"]["path"]
+samtools=TOOLS["Samtools"]["path"]
+
 rule map_reads_to_graph:
     input:
         fastq_proka="results/{sample}/{sample}_filtered.fastq.gz",
@@ -13,7 +16,7 @@ rule map_reads_to_graph:
         "../envs/scapp.yaml"
     shell:
         """
-        ml load minimap2/2.26 samtools/1.17
+        export PATH={minimap2}:{samtools}:$PATH
         python scripts/metaflye_gfa2fastg.py {input.gfa} {output.graph} 2>{log}
         minimap2 -ax map-ont -t {resources.cpus_per_task} {output.graph} {input.fastq_proka} 2>>{log} | \
         samtools view -hb -F4 -@{resources.cpus_per_task} - | samtools sort -@{resources.cpus_per_task} > {output.bam} 2>>{log}

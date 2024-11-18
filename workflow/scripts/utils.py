@@ -289,6 +289,7 @@ class AMRlinker:
         binning_res = pd.read_csv(binning_fp, sep="\t", names=["Contig", "Bin"])
 
         merged_df_bin = self.AMRlinks.merge(binning_res, left_on="Query", right_on="Contig", how="outer")
+        merged_df_bin["Bin"] = merged_df_bin["Bin"].str.lower()
         self.AMRlinks = merged_df_bin
 
 

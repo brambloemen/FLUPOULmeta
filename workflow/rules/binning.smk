@@ -1,3 +1,10 @@
+metabat=TOOLS["Metabat"]["path"]
+metabat_bin=TOOLS["Metabat"]["bin_path"]
+checkm=TOOLS["CheckM"]["path"]
+checkm_dependencies=TOOLS["CheckM"]["dependencies"]
+gtdbtk=TOOLS["GTDBtk"]["path"]
+gtdbtk_dependencies=TOOLS["GTDBtk"]["dependencies"]
+
 rule metabat:
     input:
         assembly="results/{sample}/Medaka/consensus.fasta",
@@ -12,10 +19,9 @@ rule metabat:
         mem_mb=config['memory']
     shell:
         """
-        ml load metabat2
+        export PATH={metabat}:{metabat_bin}:$PATH
         jgi_summarize_bam_contig_depths --outputDepth {output.txt} {input.bam} 2>{log}
-        metabat2 -v -t {resources.cpus_per_task} -o {output.outputdir} -i {input.assembly} -a {output.txt} 2>>{log}
-        touch {output.binning_done}
+        metabat2 -v -t {resources.cpus_per_task} -o {output.outputdir}/bin -i {input.assembly} -a {output.txt} 2>>{log}
         """
 
 rule graphmb:
@@ -49,7 +55,7 @@ rule graphmb:
 rule metabat_contigbintsvs:
     # TODO: process bins from other binning tools with the same script to generate contig_bins.tsv
     input:
-        metabat="results/{sample}/MetaBAT/metabat_done"
+        metabat="results/{sample}/MetaBAT/BIN/"
     output:
         metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv"
     resources:
@@ -57,6 +63,8 @@ rule metabat_contigbintsvs:
         mem_mb=config['memory']
     params:
         inputdir="results/{sample}/MetaBAT/BIN"
+    conda:
+        "../envs/FLUPOUL.yaml"
     shell:
         """
         python scripts/ContigBinsTSV.py {params.inputdir} > {output.metabatbins}
@@ -182,7 +190,8 @@ rule checkm:
         mem_mb=config['memory']
     shell:
       """
-      ml load hmmer prodigal pplacer CheckM
+      export PATH={checkm}:{checkm_dependencies}:$PATH
+      source {checkm}/activate
       checkm lineage_wf -t{resources.cpus_per_task} -x fa {input} {output.outdir} --pplacer_threads {resources.cpus_per_task} > {output.checkm}
       """
     
@@ -198,7 +207,9 @@ rule gtdbtk:
         mem_mb=config['memory']
     shell:
       """
-      ml load hmmer prodigal pplacer gtdb-tk fastani fasttree
+      export PATH={gtdbtk}:{gtdbtk_dependencies}:$PATH
+      export GTDBTK_DATA_PATH=/db/gtdb/release214
+      source {gtdbtk}/activate
       gtdbtk classify_wf --genome_dir {input} --out_dir {output} --cpus {resources.cpus_per_task} --pplacer_cpus 1 \
       --extension fa --skip_ani_screen
       """
@@ -230,7 +241,8 @@ rule checkm_NM:
         mem_mb=config['memory']
     shell:
       """
-      ml load hmmer prodigal pplacer CheckM
+      export PATH={checkm}:{checkm_dependencies}:$PATH
+      source {checkm}/activate
       checkm lineage_wf -t{resources.cpus_per_task} -x fa {input} {output.outdir} --pplacer_threads {resources.cpus_per_task} > {output.checkm}
       """
     
@@ -246,7 +258,9 @@ rule gtdbtk_NM:
         mem_mb=config['memory']
     shell:
       """
-      ml load hmmer prodigal pplacer gtdb-tk fastani fasttree
+      export PATH={gtdbtk}:{gtdbtk_dependencies}:$PATH
+      export GTDBTK_DATA_PATH=/db/gtdb/release214
+      source {gtdbtk}/activate
       gtdbtk classify_wf --genome_dir {input} --out_dir {output} --cpus {resources.cpus_per_task} --pplacer_cpus 1 \
       --extension fa --skip_ani_screen
       """

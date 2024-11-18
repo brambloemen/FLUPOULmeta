@@ -39,14 +39,16 @@ try:
     test_parser.AMRlinks.to_csv(snakemake.output[0], sep="\t")
 
     test_parser.create_graph_ARGlinks()
+    test_parser.AMRlinks_simple.to_csv(snakemake.output[1], sep="\t")
 
-    test_parser.plot_ARG_graph(snakemake.output[1], figsize=30)
-    nx.write_graphml(test_parser.AMRlinks_graph, snakemake.output[2])
+    test_parser.plot_ARG_graph(snakemake.output[2], figsize=30)
+    nx.write_graphml(test_parser.AMRlinks_graph, snakemake.output[3])
 
+    # Parse reads
     read_parser = AMRlinker(snakemake.input["taxo_mapping_bam"], snakemake.input["reads_resf_bam"], mode="reads")
     read_parser.match()
-    read_parser.get_covinfo(snakemake.input["reads_resf_res"])  
-    read_parser.AMRlinks.to_csv(snakemake.output[3], sep="\t")  
+    read_parser.get_covinfo(snakemake.input["reads_taxo_res"])  
+    read_parser.AMRlinks.to_csv(snakemake.output[4], sep="\t")  
 
 
 except Exception as e:
