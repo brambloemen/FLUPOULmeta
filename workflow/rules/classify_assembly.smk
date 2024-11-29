@@ -80,3 +80,19 @@ rule Flye_kma_ResF_repair_header:
         rm reads.txt header.txt temp.sam
         samtools index -@{resources.cpus_per_task} {output.bam}
         """
+
+rule AMRFinder:
+    input:
+        assembly="results/{sample}/Medaka/consensus.fasta"
+    output:
+        "results/{sample}/AMRFinder/{sample}_amrfinder.txt"
+    resources:
+        cpus_per_task=1,
+        mem_mb=50000
+    log: "logs/AMRFinder_{sample}.log"
+    conda:
+      "../envs/amrfinder.yaml"
+    shell:
+        """
+        amrfinder -n {input.assembly} > {output}
+        """

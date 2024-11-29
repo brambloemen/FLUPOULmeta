@@ -12,6 +12,9 @@ try:
     print(f"SCAPP results: {snakemake.input['scapp']}")
     print(f"gtdb results: {snakemake.input['gtdb']}")
     print(f"Output file: {snakemake.output[0]}, {snakemake.output[1]}")
+    print(f"reads taxo file: {snakemake.input['taxo_mapping_bam']}")
+    print(f"reads resf file: {snakemake.input['reads_resf_bam']}")
+    print(f"reads resf file: {snakemake.input['reads_taxo_res']}.res")
 
     # Initialize the AMRlinker object
     test_parser = AMRlinker(snakemake.input["assemb_bam"], snakemake.input["ResF_bam"], genomad_dir=snakemake.input["genomad_outputdir"])
@@ -47,7 +50,7 @@ try:
     # Parse reads
     read_parser = AMRlinker(snakemake.input["taxo_mapping_bam"], snakemake.input["reads_resf_bam"], mode="reads")
     read_parser.match()
-    read_parser.get_covinfo(snakemake.input["reads_taxo_res"])  
+    read_parser.get_covinfo(f"{snakemake.input['reads_taxo_res']}.res")  
     read_parser.AMRlinks.to_csv(snakemake.output[4], sep="\t")  
 
 

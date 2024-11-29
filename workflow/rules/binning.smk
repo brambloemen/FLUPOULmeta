@@ -143,7 +143,7 @@ rule nanomotif_discovery:
         outdir="results/{sample}/NanoMotif/"
     shell:
       """
-      nanomotif motif_discovery {input} --out {params.outdir} -t {resources.cpus_per_task} --threshold_methylation_general 0.4 --threshold_methylation_confident 0.5
+      nanomotif motif_discovery {input} --out {params.outdir} -t {resources.cpus_per_task} --min_motif_score 0.2 --read_level_methylation --threshold_valid_coverage 1
       """
     #  defaults thresholds: general 0.7, confident 0.8
     # --threshold_methylation_general 0.4
