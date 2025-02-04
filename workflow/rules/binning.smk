@@ -152,7 +152,7 @@ rule nanomotif_discovery:
 rule nanomotif_include:
     input:
         binmotifs="results/{sample}/NanoMotif/bin-motifs.tsv",
-        motifsscored="results/{sample}/NanoMotif/motifs-scored.tsv",
+        pileup="results/{sample}/NanoMotif/{sample}_assembly_modpileup.bed",
         bins="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
     output:
         newbins="results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
@@ -167,7 +167,7 @@ rule nanomotif_include:
         outdir="results/{sample}/NanoMotif/bin"
     shell:
       """
-      nanomotif include_contigs --motifs_scored {input.motifsscored} \
+      nanomotif include_contigs --pileup {input.pileup} \
       --bin_motifs {input.binmotifs} --contig_bins {input.bins} \
       --out {params.outdir} -t {resources.cpus_per_task} --run_detect_contamination --save_scores
       mv {params.outdir}/new_contig_bin.tsv {params.outdir}/new_contig_bin.tmp.tsv
