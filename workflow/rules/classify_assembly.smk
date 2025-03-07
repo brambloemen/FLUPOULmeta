@@ -85,14 +85,20 @@ rule AMRFinder:
     input:
         assembly="results/{sample}/Medaka/consensus.fasta"
     output:
-        "results/{sample}/AMRFinder/{sample}_amrfinder.txt"
+        report="results/{sample}/AMRFinder/{sample}_amrfinder.txt"
     resources:
         cpus_per_task=1,
         mem_mb=50000
     log: "logs/AMRFinder_{sample}.log"
+    params:
+        db_flag = "resources/amrfinder_db/.setup_complete"
     conda:
       "../envs/amrfinder.yaml"
     shell:
         """
-        amrfinder -n {input.assembly} > {output}
+        # Setup DB if not already done
+        if [ ! -f {params.db_flag} ]; then
+            amrfinder -u
+        fi
+        amrfinder -n {input.assembly} > {output.report}
         """

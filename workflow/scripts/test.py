@@ -12,8 +12,9 @@ mobileOG_fp = "/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/mobi
 binning_fp = "/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/NanoMotif/bin/new_contig_bin.tsv"
 scapp_fp = "/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/SCAPP"
 gtdb_fp = "/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/GTDBtk/gtdbtk.bac120.summary.tsv"
+genomad_fp = "/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/genomad_output"
 
-test_parser = AMRlinker(assemb_bam, ResF_bam, genomad_dir = "/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/genomad_output")
+test_parser = AMRlinker(assemb_bam, ResF_bam, genomad_dir = genomad_fp)
 
 test_parser.match()
 
@@ -38,20 +39,23 @@ test_parser.AMRlinks.to_csv("/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/res
 test_parser.AMRlinks_simple.to_csv("/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/test_AMRlink_simple.tsv", sep="\t")
 
 print(test_parser.AMRlinks_graph.order())
-test_parser.plot_ARG_graph('test.png', figsize=30)
+# test_parser.plot_ARG_graph('test.png', figsize=30)
+nx.write_graphml(test_parser.AMRlinks_graph, "F4D4_ARGgraph.xml")
 
-# # test read-based ARG linking
+
+
+# test read-based ARG linking
 # readmap_bam_taxa="/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/F4D4.kmadb.bam"
-# readmap_NDARO_bam="/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/NDARO/F4D4_NDARO.bam"
-# test_parser = AMRlinker(readmap_bam_taxa, readmap_NDARO_bam, mode="reads", genomad_dir="/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/genomad_output")
-# # test_parser = AMRlinker(assemb_bam, NDARO_bam, mode="reads")
+# readmap_NDARO_bam="/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/F4D4_rep.resf.bam"
+# read_parser = AMRlinker(readmap_bam_taxa, readmap_NDARO_bam, mode="reads", genomad_dir="/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/genomad_output")
+# # read_parser = AMRlinker(assemb_bam, NDARO_bam, mode="reads")
 
-# test_parser.match()
+# read_parser.match()
 
-# print(test_parser.AMRlinks)
+# print(read_parser.AMRlinks)
 
-# test_parser.get_covinfo("/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/F4D4_kma.res")
-# print(test_parser.AMRlinks.head(10))
+# read_parser.get_covinfo("/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/F4D4_kma.res")
+# print(read_parser.AMRlinks[read_parser.AMRlinks["ARG"].notnull()].head(10))
 
 
-
+# read_parser.AMRlinks.to_csv("/scratch/brbloemen/FLUPOUL/FLUPOULmeta/workflow/results/F4D4/Summary/test_AMRlink_reads.tsv", sep="\t")

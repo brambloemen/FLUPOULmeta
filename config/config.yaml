@@ -1,4 +1,4 @@
-threads: 25
+threads: 20
 memory: 250000
 jobs: 1
 model: "r1041_e82_400bps_sup_v5.0.0"
@@ -7,13 +7,13 @@ tools:
   Seqkit:
     path: "/usr/local/bin/lmod/seqkit/2.3.1/"
   Samtools:
-    path: "/usr/local/bin/lmod/samtools/1.17/bin/"
+    path: "/usr/local/bin/lmod/samtools/1.17/"
   KMA:
     path: "/usr/local/bin/lmod/kma/1.4.15/"
     resfinder_db: "/db/resfinder4/latest/all"
     taxonomic_db: "/scratch/alvanuffelen/kma_v2/kma_db"
   Kraken2:
-    path: "/usr/local/bin/lmod/kraken2_remote/2.1.1/venv/bin"
+    path: "/usr/local/bin/lmod/kraken2_remote/2.1.1/venv/bin/"
     db: "/db/kraken2_full/20240113/"
   Krona:
     path: "/usr/local/bin/lmod/krona/2.8.1/bin/"

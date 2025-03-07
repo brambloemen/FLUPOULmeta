@@ -151,6 +151,7 @@ rule nanomotif_discovery:
 
 rule nanomotif_include:
     input:
+        assembly="results/{sample}/Medaka/consensus.fasta",
         binmotifs="results/{sample}/NanoMotif/bin-motifs.tsv",
         pileup="results/{sample}/NanoMotif/{sample}_assembly_modpileup.bed",
         bins="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
@@ -167,9 +168,9 @@ rule nanomotif_include:
         outdir="results/{sample}/NanoMotif/bin"
     shell:
       """
-      nanomotif include_contigs --pileup {input.pileup} \
+      nanomotif include_contigs --pileup {input.pileup} --assembly {input.assembly} \
       --bin_motifs {input.binmotifs} --contig_bins {input.bins} \
-      --out {params.outdir} -t {resources.cpus_per_task} --run_detect_contamination --save_scores
+      --out {params.outdir} -t {resources.cpus_per_task} --run_detect_contamination
       mv {params.outdir}/new_contig_bin.tsv {params.outdir}/new_contig_bin.tmp.tsv
       tail -n +2 {params.outdir}/new_contig_bin.tmp.tsv > {output.newbins}
       """
