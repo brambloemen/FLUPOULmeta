@@ -1,3 +1,5 @@
+output_dir=config.get("output_dir", "results")
+
 metabat=TOOLS["Metabat"]["path"]
 metabat_bin=TOOLS["Metabat"]["bin_path"]
 checkm=TOOLS["CheckM"]["path"]
@@ -7,13 +9,13 @@ gtdbtk_dependencies=TOOLS["GTDBtk"]["dependencies"]
 
 rule metabat:
     input:
-        assembly="results/{sample}/Medaka/consensus.fasta",
-        bam="results/{sample}/MapToAssemb/{sample}_assembly.bam"
+        assembly=f"{output_dir}/{{sample}}/Medaka/consensus.fasta",
+        bam=f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.bam"
     output:
-        txt="results/{sample}/MetaBAT/depths.txt",
-        outputdir=directory("results/{sample}/MetaBAT/BIN/")
+        txt=f"{output_dir}/{{sample}}/MetaBAT/depths.txt",
+        outputdir=directory(f"{output_dir}/{{sample}}/MetaBAT/BIN/")
     log:
-        "results/{sample}/logs/metabat_done.log"
+        f"{output_dir}/{{sample}}/logs/metabat_done.log"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -26,22 +28,22 @@ rule metabat:
 
 rule graphmb:
     input:
-        txt="results/{sample}/MetaBAT/depths.txt",
-        fasta="results/{sample}/Flye/assembly.fasta",
-        bam="results/{sample}/MapToAssemb/{sample}_assembly.bam"
+        txt=f"{output_dir}/{{sample}}/MetaBAT/depths.txt",
+        fasta=f"{output_dir}/{{sample}}/Flye/assembly.fasta",
+        bam=f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.bam"
     output:
-        outputdir=directory("results/{sample}/GraphMB/"),
-        bins_dir=directory("results/{sample}/GraphMB/_bins/"),
-        contigbins="results/{sample}/GraphMB/grapmb_contig2bin.tsv"
+        outputdir=directory(f"{output_dir}/{{sample}}/GraphMB/"),
+        bins_dir=directory(f"{output_dir}/{{sample}}/GraphMB/_bins/"),
+        contigbins=f"{output_dir}/{{sample}}/GraphMB/grapmb_contig2bin.tsv"
     log:
-        "results/{sample}/logs/GraphMB.log"
+        f"{output_dir}/{{sample}}/logs/GraphMB.log"
     conda:
-        "../envs/graphmb.yaml"
+        path.join(base_dir, "envs/graphmb.yaml")
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
     params:
-        assembdir="results/{sample}/Flye/",
+        assembdir=f"{output_dir}/{{sample}}/Flye/",
         params="--assembly_type flye --vamb --minbin 250000 --mincontig 3000 --seed 37"
     shell:
         """
@@ -55,33 +57,34 @@ rule graphmb:
 rule metabat_contigbintsvs:
     # TODO: process bins from other binning tools with the same script to generate contig_bins.tsv
     input:
-        metabat="results/{sample}/MetaBAT/BIN/"
+        metabat=f"{output_dir}/{{sample}}/MetaBAT/BIN/"
     output:
-        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv"
+        metabatbins=f"{output_dir}/{{sample}}/MetaBAT/MetaBATBins.tsv"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
     params:
-        inputdir="results/{sample}/MetaBAT/BIN"
+        inputdir=f"{output_dir}/{{sample}}/MetaBAT/BIN",
+        script=path.join(base_dir, "scripts/ContigBinsTSV.py")
     conda:
-        "../envs/FLUPOUL.yaml"
+        path.join(base_dir, "envs/FLUPOUL.yaml")
     shell:
         """
-        python scripts/ContigBinsTSV.py {params.inputdir} > {output.metabatbins}
+        python {params.script} {params.inputdir} > {output.metabatbins}
         """
 
 rule semibin:
     input:
-        assembly="results/{sample}/Medaka/consensus.fasta",
-        bam="results/{sample}/MapToAssemb/{sample}_assembly.bam"
+        assembly=f"{output_dir}/{{sample}}/Medaka/consensus.fasta",
+        bam=f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.bam"
     output:
-        contig_bins="results/{sample}/semibin/contig_bins.tsv",
-        contig_bins_filt="results/{sample}/semibin/contig_bins_binned.tsv",
-        outdir=directory("results/{sample}/semibin")
+        contig_bins=f"{output_dir}/{{sample}}/semibin/contig_bins.tsv",
+        contig_bins_filt=f"{output_dir}/{{sample}}/semibin/contig_bins_binned.tsv",
+        outdir=directory(f"{output_dir}/{{sample}}/semibin")
     log:
-      "results/{sample}/logs/semibin.log"
+      f"{output_dir}/{{sample}}/logs/semibin.log"
     conda:
-      "../envs/SemiBin.yaml"
+        path.join(base_dir, "envs/SemiBin.yaml")
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -94,24 +97,24 @@ rule semibin:
 
 rule dastool:
     input:
-        fasta="results/{sample}/Medaka/consensus.fasta",
-        metabatbins="results/{sample}/MetaBAT/MetaBATBins.tsv",
-        semibin_bins="results/{sample}/semibin/contig_bins_binned.tsv",
-        graphmb_bins="results/{sample}/GraphMB/grapmb_contig2bin.tsv"
+        fasta=f"{output_dir}/{{sample}}/Medaka/consensus.fasta",
+        metabatbins=f"{output_dir}/{{sample}}/MetaBAT/MetaBATBins.tsv",
+        semibin_bins=f"{output_dir}/{{sample}}/semibin/contig_bins_binned.tsv",
+        graphmb_bins=f"{output_dir}/{{sample}}/GraphMB/grapmb_contig2bin.tsv"
     output:
-        DASdone="results/{sample}/DAS_Tool/DASdone",
-        bins=directory("results/{sample}/DAS_Tool/DASTool_DASTool_bins/"),
-        ctg2bin="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
+        DASdone=f"{output_dir}/{{sample}}/DAS_Tool/DASdone",
+        bins=directory(f"{output_dir}/{{sample}}/DAS_Tool/DASTool_DASTool_bins/"),
+        ctg2bin=f"{output_dir}/{{sample}}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
     log:
-      "results/{sample}/logs/DAStool.log"
+      f"{output_dir}/{{sample}}/logs/DAStool.log"
     conda:
-      "../envs/DAS_Tool.yaml"
+       path.join(base_dir, "envs/DAS_Tool.yaml")
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
     params:
         params="--write_bins --write_unbinned --score_threshold=0",
-        outdir="results/{sample}/DAS_Tool/DASTool"
+        outdir=f"{output_dir}/{{sample}}/DAS_Tool/DASTool"
     shell:
       """
       DAS_Tool -i {input.metabatbins},{input.semibin_bins},{input.graphmb_bins} -c {input.fasta} \
@@ -125,22 +128,22 @@ rule dastool:
 
 rule nanomotif_discovery:
     input:
-        fasta="results/{sample}/Medaka/consensus.fasta",
-        bed="results/{sample}/NanoMotif/{sample}_assembly_modpileup.bed",
-        bins="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
+        fasta=f"{output_dir}/{{sample}}/Medaka/consensus.fasta",
+        bed=f"{output_dir}/{{sample}}/NanoMotif/{{sample}}_assembly_modpileup.bed",
+        bins=f"{output_dir}/{{sample}}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
     output:
-        binmotifs="results/{sample}/NanoMotif/bin-motifs.tsv",
-        motifsscored="results/{sample}/NanoMotif/motifs-scored.tsv",
-        motifs="results/{sample}/NanoMotif/motifs.tsv"
+        binmotifs=f"{output_dir}/{{sample}}/NanoMotif/bin-motifs.tsv",
+        motifsscored=f"{output_dir}/{{sample}}/NanoMotif/motifs-scored.tsv",
+        motifs=f"{output_dir}/{{sample}}/NanoMotif/motifs.tsv"
     log:
-      "results/{sample}/logs/nanomotif_disc.log"
+      f"{output_dir}/{{sample}}/logs/nanomotif_disc.log"
     conda:
-      "../envs/nanomotif.yaml"
+        path.join(base_dir, "envs/nanomotif.yaml")
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
     params:
-        outdir="results/{sample}/NanoMotif/"
+        outdir=f"{output_dir}/{{sample}}/NanoMotif/"
     shell:
       """
       nanomotif motif_discovery {input} --out {params.outdir} -t {resources.cpus_per_task} --min_motif_score 0.2 --read_level_methylation --threshold_valid_coverage 1
@@ -151,21 +154,21 @@ rule nanomotif_discovery:
 
 rule nanomotif_include:
     input:
-        assembly="results/{sample}/Medaka/consensus.fasta",
-        binmotifs="results/{sample}/NanoMotif/bin-motifs.tsv",
-        pileup="results/{sample}/NanoMotif/{sample}_assembly_modpileup.bed",
-        bins="results/{sample}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
+        assembly=f"{output_dir}/{{sample}}/Medaka/consensus.fasta",
+        binmotifs=f"{output_dir}/{{sample}}/NanoMotif/bin-motifs.tsv",
+        pileup=f"{output_dir}/{{sample}}/NanoMotif/{{sample}}_assembly_modpileup.bed",
+        bins=f"{output_dir}/{{sample}}/DAS_Tool/DASTool_DASTool_contig2bin.tsv"
     output:
-        newbins="results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
+        newbins=f"{output_dir}/{{sample}}/NanoMotif/bin/new_contig_bin.tsv"
     log:
-      "results/{sample}/logs/nanomotif_include.log"
+      f"{output_dir}/{{sample}}/logs/nanomotif_include.log"
     conda:
-      "../envs/nanomotif.yaml"
+        path.join(base_dir, "envs/nanomotif.yaml")
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
     params:
-        outdir="results/{sample}/NanoMotif/bin"
+        outdir=f"{output_dir}/{{sample}}/NanoMotif/bin"
     shell:
       """
       nanomotif include_contigs --pileup {input.pileup} --assembly {input.assembly} \
@@ -180,12 +183,12 @@ rule nanomotif_include:
 # TODO: update bin fastas with nanomotif binning; perform checkM and gtdb on these updated bins
 rule checkm:
     input:
-        "results/{sample}/DAS_Tool/DASTool_DASTool_bins/"
+        f"{output_dir}/{{sample}}/DAS_Tool/DASTool_DASTool_bins/"
     output:
-        outdir=directory("results/{sample}/CheckM"),
-        checkm="results/{sample}/CheckM/CheckM_summary.txt"
+        outdir=directory(f"{output_dir}/{{sample}}/CheckM"),
+        checkm=f"{output_dir}/{{sample}}/CheckM/CheckM_summary.txt"
     log:
-      "results/{sample}/logs/CheckM.log"
+      f"{output_dir}/{{sample}}/logs/CheckM.log"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -198,11 +201,11 @@ rule checkm:
     
 rule gtdbtk:
     input:
-        "results/{sample}/DAS_Tool/DASTool_DASTool_bins/"
+        f"{output_dir}/{{sample}}/DAS_Tool/DASTool_DASTool_bins/"
     output:
-        directory("results/{sample}/GTDBtk")
+        directory(f"{output_dir}/{{sample}}/GTDBtk")
     log:
-      "results/{sample}/logs/gtdbtk.log"
+      f"{output_dir}/{{sample}}/logs/gtdbtk.log"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -217,26 +220,26 @@ rule gtdbtk:
 
 rule nanomotif_bins:
     input:
-        fasta_file = "results/{sample}/Medaka/consensus.fasta",
-        contig_bin = "results/{sample}/NanoMotif/bin/new_contig_bin.tsv"
+        fasta_file = f"{output_dir}/{{sample}}/Medaka/consensus.fasta",
+        contig_bin = f"{output_dir}/{{sample}}/NanoMotif/bin/new_contig_bin.tsv"
     output:
-        outdir = directory("results/{sample}/NanoMotif/bin_fastas/")
+        outdir = directory(f"{output_dir}/{{sample}}/NanoMotif/bin_fastas/")
     log:
-        "results/{sample}/logs/nanomotif_bins.log"
+        f"{output_dir}/{{sample}}/logs/nanomotif_bins.log"
     resources:
         cpus_per_task=1,
         mem_mb=10000
     script:
-        "../scripts/extract_bins_fastas.py"
+        path.join(base_dir, "scripts/extract_bins_fastas.py")
 
 rule checkm_NM:
     input:
-        "results/{sample}/NanoMotif/bin_fastas/"
+        f"{output_dir}/{{sample}}/NanoMotif/bin_fastas/"
     output:
-        outdir=directory("results/{sample}/CheckM_NM"),
-        checkm="results/{sample}/CheckM_NM/CheckM_summary.txt"
+        outdir=directory(f"{output_dir}/{{sample}}/CheckM_NM"),
+        checkm=f"{output_dir}/{{sample}}/CheckM_NM/CheckM_summary.txt"
     log:
-      "results/{sample}/logs/CheckM_NM.log"
+      f"{output_dir}/{{sample}}/logs/CheckM_NM.log"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -249,11 +252,11 @@ rule checkm_NM:
     
 rule gtdbtk_NM:
     input:
-        "results/{sample}/NanoMotif/bin_fastas/"
+        f"{output_dir}/{{sample}}/NanoMotif/bin_fastas/"
     output:
-        directory("results/{sample}/GTDBtk_NM")
+        directory(f"{output_dir}/{{sample}}/GTDBtk_NM")
     log:
-      "results/{sample}/logs/gtdbtk_NM.log"
+      f"{output_dir}/{{sample}}/logs/gtdbtk_NM.log"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']

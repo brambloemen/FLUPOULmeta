@@ -1,16 +1,17 @@
 minimap2=TOOLS["minimap2"]["path"]
 samtools=TOOLS["Samtools"]["path"]
+output_dir=config.get("output_dir", "results")
 
 rule minimap_assembly:
     input:
-        fastq_proka="results/{sample}/{sample}_filtered.fastq.gz",
-        assembly="results/{sample}/Medaka/consensus.fasta"
+        fastq_proka=fastq_proka,
+        assembly=f"{output_dir}/{{sample}}/Medaka/consensus.fasta"
     output:
-        sam=temp("results/{sample}/MapToAssemb/{sample}_assembly.sam")
+        sam=temp(f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.sam")
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
-    log: "logs/map_assembly/{sample}_minimap.log"
+    log: f"logs/map_assembly/{{sample}}_minimap.log"
     shell:
         """
         export PATH={minimap2}:{samtools}:$PATH
@@ -19,18 +20,18 @@ rule minimap_assembly:
 
 rule samtools_assembly_mapping:
     input:
-        sam="results/{sample}/MapToAssemb/{sample}_assembly.sam",
-        assembly="results/{sample}/Medaka/consensus.fasta"
+        sam=f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.sam",
+        assembly=f"{output_dir}/{{sample}}/Medaka/consensus.fasta"
     output:
-        bam="results/{sample}/MapToAssemb/{sample}_assembly.bam",
-        bai="results/{sample}/MapToAssemb/{sample}_assembly.bam.bai",
-        fai="results/{sample}/Medaka/consensus.fasta.fai"
+        bam=f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.bam",
+        bai=f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.bam.bai",
+        fai=f"{output_dir}/{{sample}}/Medaka/consensus.fasta.fai"
     params:
         filt="-hb -F0x904"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
-    log: "logs/map_assembly/{sample}_samtools.log"
+    log: f"logs/map_assembly/{{sample}}_samtools.log"
     shell:
         """
         export PATH={samtools}:$PATH

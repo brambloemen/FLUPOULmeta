@@ -1,35 +1,48 @@
 from os import path
 
+# Define the base directory
+base_dir = path.dirname(workflow.snakefile)
+
 TOOLS=config["tools"]
-samplename=config.get('sample', [])
+output_dir=config.get("output_dir", "results") # default output directory is results, but can be specified
+samplename=config.get('sample', []) # sample name should be specified
+skip_prefilter=config.get('skip_prefilter', False)
+
+# Define which input fastq to use: depending on whether read_qc and kraken2 are skipped
+fastq_proka=lambda wildcards: f"{output_dir}/{wildcards.sample}/{wildcards.sample}_filtered.fastq.gz" if not skip_prefilter else config.get('fastq', '')
+
 rule all:
     input:
-        lambda wildcards: expand("results/{sample}/{sample}_filtered.fastq.gz", sample=samplename),
-        lambda wildcards: expand("results/{sample}/{sample}.kmadb.bam", sample=samplename),
-        lambda wildcards: expand("results/{sample}/{sample}_rep.resf.bam", sample=samplename),
-        lambda wildcards: expand("results/{sample}/Flye/assembly.fasta", sample=samplename),
-        lambda wildcards: expand("results/{sample}/Medaka/consensus.fasta", sample=samplename),
-        lambda wildcards: expand("results/{sample}/MapToAssemb/{sample}_assembly.bam", sample=samplename),
-        lambda wildcards: expand("results/{sample}/MapToAssemb/{sample}_assembly.bam.bai", sample=samplename),
-        lambda wildcards: expand("results/{sample}/Medaka/consensus.fasta.fai", sample=samplename),
-        lambda wildcards: expand("results/{sample}/SCAPP/assembly_graph.confident_cycs.fasta", sample=samplename),
-        lambda wildcards: expand("results/{sample}/FlyeClassify/{sample}_assembly.bam", sample=samplename),
-        lambda wildcards: expand("results/{sample}/FlyeClassify/{sample}_ResF.bam", sample=samplename),
-        lambda wildcards: expand("results/{sample}/AMRFinder/{sample}_amrfinder.txt", sample=samplename),
-        lambda wildcards: expand("results/{sample}/DAS_Tool/DASdone", sample=samplename),
-        lambda wildcards: expand("results/{sample}/genomad_output", sample=samplename),
-        lambda wildcards: expand("results/{sample}/CheckM/CheckM_summary.txt", sample=samplename),
-        lambda wildcards: expand("results/{sample}/GTDBtk", sample=samplename),
-        lambda wildcards: expand("results/{sample}/NanoMotif/bin/new_contig_bin.tsv", sample=samplename),
-        lambda wildcards: expand("results/{sample}/mobileOGdb/DASTool_proteins.mobileOG.Alignment.Out.csv", sample=samplename),
-        lambda wildcards: expand("results/{sample}/GTDBtk_NM", sample=samplename),
-        lambda wildcards: expand("results/{sample}/CheckM_NM", sample=samplename),
-        lambda wildcards: expand("results/{sample}/MobTyper", sample=samplename),
-        lambda wildcards: expand("results/{sample}/Summary/Assembly_AMRlinks.png", sample=samplename)
+        # optionally make it possible to not run read_qc and kraken2 eukaryotic fitlering
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/{{sample}}_filtered.fastq.gz", sample=samplename) if not skip_prefilter else [],
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/KMA_reads/{{sample}}.kmadb.bam", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/KMA_reads/{{sample}}_rep.resf.bam", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/Flye/assembly.fasta", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/Medaka/consensus.fasta", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.bam", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/MapToAssemb/{{sample}}_assembly.bam.bai", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/Medaka/consensus.fasta.fai", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/SCAPP/assembly_graph.confident_cycs.fasta", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_assembly.bam", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_ResF.bam", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/AMRFinder/{{sample}}_amrfinder.txt", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/DAS_Tool/DASdone", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/genomad_output", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/CheckM/CheckM_summary.txt", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/GTDBtk", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/NanoMotif/bin/new_contig_bin.tsv", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/mobileOGdb/DASTool_proteins.mobileOG.Alignment.Out.csv", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/GTDBtk_NM", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/CheckM_NM", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/MobTyper", sample=samplename),
+        lambda wildcards: expand(f"{output_dir}/{{sample}}/Summary/Assembly_AMRlinks.png", sample=samplename)
         
 
-include: "rules/read_qc.smk"
-include: "rules/kraken2.smk"
+if not skip_prefilter:
+    include: "rules/read_qc.smk"
+if not skip_prefilter:
+    include: "rules/kraken2.smk"
+
 include: "rules/kma.smk"
 include: "rules/flye.smk"
 include: "rules/map_assembly.smk"

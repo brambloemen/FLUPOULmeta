@@ -1,10 +1,11 @@
 seqkit=config["tools"]["Seqkit"]["path"]
+output_dir=config.get("output_dir", "results")
 
 rule seqkit:
     input:
         lambda wildcards: config.get('fastq', '')
     output:
-        fastq="results/{sample}/fastq_hq/{sample}.HQ.fastq.gz"
+        fastq=f"{output_dir}/{{sample}}/fastq_hq/{{sample}}.HQ.fastq.gz"
     params:
         db="/db/kraken2_full/20240113/"
     resources:

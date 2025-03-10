@@ -3,13 +3,21 @@ memory: 250000
 jobs: 1
 model: "r1041_e82_400bps_sup_v5.0.0"
 
+# enables skipping the prefiltering step (read qc and Kraken2 filtering of likely Eukaryotic reads)
+skip_prefilter: False
+
 tools:
+  Genomad:
+    db: "/data/brbloemen/db/genomad_db"
+  MobileOGdb:
+    db: "/data/brbloemen/db/mobileOG-db/mobileOG-db_beatrix-1.6.dmnd"
+    metadata: "/data/brbloemen/db/mobileOG-db/mobileOG-db-beatrix-1.6-All.csv"
   Seqkit:
     path: "/usr/local/bin/lmod/seqkit/2.3.1/"
   Samtools:
     path: "/usr/local/bin/lmod/samtools/1.17/"
   KMA:
-    path: "/usr/local/bin/lmod/kma/1.4.15/"
+    path: "/usr/local/bin/lmod/kma/1.4.18/"
     resfinder_db: "/db/resfinder4/latest/all"
     taxonomic_db: "/scratch/alvanuffelen/kma_v2/kma_db"
   Kraken2:

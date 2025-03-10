@@ -2,13 +2,14 @@ KMA=TOOLS["KMA"]["path"]
 samtools=TOOLS["Samtools"]["path"]
 taxa_db=TOOLS["KMA"]["resfinder_db"]
 resf_db=TOOLS["KMA"]["taxonomic_db"]
+output_dir=config.get("output_dir", "results")
 
 rule Flye_kma_classify:
     input:
-        assembly="results/{sample}/Medaka/consensus.fasta"
+        assembly=f"{output_dir}/{{sample}}/Medaka/consensus.fasta"
     output:
-        sam=temp("results/{sample}/FlyeClassify/{sample}_assembly.sam"),
-        res="results/{sample}/FlyeClassify/{sample}"
+        sam=temp(f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_assembly.sam"),
+        res=f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}"
     params:
         database="/scratch/alvanuffelen/kma_v2/kma_db",
         map="-tmp $(pwd)/ -mem_mode -ID 0.0 -ef -proxi 0.9 -na -nc -nf -1t1 -verbose 2"
@@ -25,9 +26,9 @@ rule Flye_kma_classify:
 
 rule Flye_kma_classify_samtools_filter:
     input:
-        sam="results/{sample}/FlyeClassify/{sample}_assembly.sam"
+        sam=f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_assembly.sam"
     output:
-        bam="results/{sample}/FlyeClassify/{sample}_assembly.bam"
+        bam=f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_assembly.bam"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=20000
@@ -42,10 +43,10 @@ rule Flye_kma_classify_samtools_filter:
 
 rule Flye_kma_align_resfinder:
     input:
-        assembly="results/{sample}/Medaka/consensus.fasta"
+        assembly=f"{output_dir}/{{sample}}/Medaka/consensus.fasta"
     output:
-        sam=temp("results/{sample}/FlyeClassify/{sample}_ResF.sam"),
-        res="results/{sample}/FlyeClassify/{sample}_ResF"
+        sam=temp(f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_ResF.sam"),
+        res=f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_ResF"
     params:
         database="/db/resfinder4/latest/all",
         map="-tmp $(pwd)/ -mem_mode -ID 0.0 -cge -ef -na -nc -nf -verbose 2"
@@ -62,9 +63,9 @@ rule Flye_kma_align_resfinder:
 
 rule Flye_kma_ResF_repair_header:
     input:
-        sam="results/{sample}/FlyeClassify/{sample}_ResF.sam"
+        sam=f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_ResF.sam"
     output:
-        bam="results/{sample}/FlyeClassify/{sample}_ResF.bam"
+        bam=f"{output_dir}/{{sample}}/FlyeClassify/{{sample}}_ResF.bam"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=20000
@@ -83,17 +84,17 @@ rule Flye_kma_ResF_repair_header:
 
 rule AMRFinder:
     input:
-        assembly="results/{sample}/Medaka/consensus.fasta"
+        assembly=f"{output_dir}/{{sample}}/Medaka/consensus.fasta"
     output:
-        report="results/{sample}/AMRFinder/{sample}_amrfinder.txt"
+        report=f"{output_dir}/{{sample}}/AMRFinder/{{sample}}_amrfinder.txt"
     resources:
         cpus_per_task=1,
         mem_mb=50000
     log: "logs/AMRFinder_{sample}.log"
     params:
-        db_flag = "resources/amrfinder_db/.setup_complete"
+        db_flag = path.join(base_dir, "resources/amrfinder_db/.setup_complete")
     conda:
-      "../envs/amrfinder.yaml"
+        path.join(base_dir, "envs/amrfinder.yaml")
     shell:
         """
         # Setup DB if not already done

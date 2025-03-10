@@ -3,37 +3,39 @@ minimap2=TOOLS["minimap2"]["path"]
 samtools=TOOLS["Samtools"]["path"]
 htslib=TOOLS["Medaka"]["htslib_path"]
 medaka=TOOLS["Medaka"]["path"]
+output_dir=config.get("output_dir", "results")
+skip_kraken2=config.get('skip_kraken2', False)
 
 rule flye_assemble:
     input:
-        fastq_proka="results/{sample}/{sample}_filtered.fastq.gz"
+        fastq_proka=fastq_proka
     output:
-        fasta="results/{sample}/Flye/assembly.fasta",
-        graph="results/{sample}/Flye/assembly_graph.gfa",
-        info="results/{sample}/Flye/assembly_info.txt"
+        fasta=f"{output_dir}/{{sample}}/Flye/assembly.fasta",
+        graph=f"{output_dir}/{{sample}}/Flye/assembly_graph.gfa",
+        info=f"{output_dir}/{{sample}}/Flye/assembly_info.txt"
     params:
         "--meta -i 2 --read-error 0.03"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
-    log: "logs/flye/{sample}.log"
+    log: f"logs/flye/{{sample}}.log"
     conda:
-        "../envs/Flye.yaml"
+        path.join(base_dir, "envs/Flye.yaml")
     shell:
         """
         export PATH={flye}:$PATH
-        flye --nano-hq {input.fastq_proka} {params} --out-dir results/{wildcards.sample}/Flye -t {resources.cpus_per_task}
+        flye --nano-hq {input.fastq_proka} {params} --out-dir {output_dir}/{wildcards.sample}/Flye -t {resources.cpus_per_task}
         """
 
 rule medaka_mini_align:
     input:
-        fastq_proka="results/{sample}/{sample}_filtered.fastq.gz",
-        draft="results/{sample}/Flye/assembly.fasta"
+        fastq_proka=fastq_proka,
+        draft=f"{output_dir}/{{sample}}/Flye/assembly.fasta"
     output:
-        bam="results/{sample}/Medaka/calls_to_draft.bam",
-        bai="results/{sample}/Medaka/calls_to_draft.bam.bai"
+        bam=f"{output_dir}/{{sample}}/Medaka/calls_to_draft.bam",
+        bai=f"{output_dir}/{{sample}}/Medaka/calls_to_draft.bam.bai"
     params:
-        bam=temp("results/{sample}/Medaka/calls_to_draft.tmp")
+        bam=temp(f"{output_dir}/{{sample}}/Medaka/calls_to_draft.tmp")
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
@@ -50,10 +52,10 @@ rule medaka_mini_align:
 cpus=min(config['threads'],12)
 rule medaka_consensus:
     input:
-        bam="results/{sample}/Medaka/calls_to_draft.bam",
-        info="results/{sample}/Flye/assembly_info.txt"
+        bam=f"{output_dir}/{{sample}}/Medaka/calls_to_draft.bam",
+        info=f"{output_dir}/{{sample}}/Flye/assembly_info.txt"
     output:
-        "results/{sample}/Medaka/consensus_probs.hdf"
+        f"{output_dir}/{{sample}}/Medaka/consensus_probs.hdf"
     resources:
         cpus_per_task=cpus,
         mem_mb=config['memory']
@@ -70,10 +72,10 @@ rule medaka_consensus:
 
 rule medaka_stitch:
     input:
-        probs="results/{sample}/Medaka/consensus_probs.hdf",
-        draft="results/{sample}/Flye/assembly.fasta"
+        probs=f"{output_dir}/{{sample}}/Medaka/consensus_probs.hdf",
+        draft=f"{output_dir}/{{sample}}/Flye/assembly.fasta"
     output:
-        "results/{sample}/Medaka/consensus.fasta"
+        f"{output_dir}/{{sample}}/Medaka/consensus.fasta"
     resources:
         cpus_per_task=1,
         mem_mb=24000

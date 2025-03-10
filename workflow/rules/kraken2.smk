@@ -1,48 +1,50 @@
 kraken2=config["tools"]["Kraken2"]["path"]
-db=config["tools"]["Kraken2"]["db"]
+krakendb=config["tools"]["Kraken2"]["db"]
 krona=config["tools"]["Krona"]["path"]
+output_dir=config.get("output_dir", "results")
 
 rule kraken2:
     input:
-        fastq="results/{sample}/fastq_hq/{sample}.HQ.fastq.gz"
+        fastq=f"{output_dir}/{{sample}}/fastq_hq/{{sample}}.HQ.fastq.gz"
     output:
-        report="results/{sample}/{sample}.kreport",
-        kraken="results/{sample}/{sample}.kraken",
-        krona="results/{sample}/{sample}.krona.html"
+        report=f"{output_dir}/{{sample}}/{{sample}}.kreport",
+        kraken=f"{output_dir}/{{sample}}/{{sample}}.kraken",
+        krona=f"{output_dir}/{{sample}}/{{sample}}.krona.html"
     params:
-        db="/db/kraken2_full/20240113/"
+        db=krakendb
     resources:
         cpus_per_task=config['threads'],
         mem_mb=config['memory']
     log:
-        "logs/kraken2/{sample}.log"
+        f"logs/kraken2/{{sample}}.log"
     shell:
         """
         export PATH={kraken2}:{krona}:$PATH
         source {kraken2}/activate
-        mkdir -p results/{wildcards.sample}
+        mkdir -p {output_dir}/{wildcards.sample}
         kraken2 --db {params.db} --threads 20 --report {output.report} --output {output.kraken} {input}
         ktImportTaxonomy {output.report} -t 5 -m 3 -o {output.krona}
         """
 
 rule extract_kraken_reads:
     input:
-        kraken="results/{sample}/{sample}.kraken",
-        report="results/{sample}/{sample}.kreport",
+        kraken=f"{output_dir}/{{sample}}/{{sample}}.kraken",
+        report=f"{output_dir}/{{sample}}/{{sample}}.kreport",
         reads=lambda wildcards: config.get('fastq', '')
     output:
-        filtered_reads="results/{sample}/{sample}_filtered.fastq.gz"
+        filtered_reads=f"{output_dir}/{{sample}}/{{sample}}_filtered.fastq.gz"
     params:
-        "-t 2759 --exclude --include-children --fastq-output"
+        extract="-t 2759 --exclude --include-children --fastq-output",
+        script=path.join(base_dir, "scripts/extract_kraken_reads.py")
     resources:
         cpus_per_task=9,
         mem_mb=50000
     log:
-        "logs/extract_kraken_reads/{sample}.log"
+        f"logs/extract_kraken_reads/{{sample}}.log"
     conda:
-        "../envs/FLUPOUL.yaml"
+        path.join(base_dir, "envs/FLUPOUL.yaml")
     shell:
         """
-        python scripts/extract_kraken_reads.py -k {input.kraken} -s {input.reads} -o tmp.fastq {params} -r {input.report}
+        python {params.script} -k {input.kraken} -s {input.reads} -o tmp.fastq {params.extract} -r {input.report}
         pigz -p{resources.cpus_per_task} tmp.fastq && mv tmp.fastq.gz {output.filtered_reads}
         """

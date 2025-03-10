@@ -2,13 +2,14 @@ KMA=TOOLS["KMA"]["path"]
 samtools=TOOLS["Samtools"]["path"]
 taxa_db=TOOLS["KMA"]["resfinder_db"]
 resf_db=TOOLS["KMA"]["taxonomic_db"]
+output_dir=config.get("output_dir", "results")
 
 rule kma_align:
     input:
-        fastq_proka="results/{sample}/{sample}_filtered.fastq.gz"
+        fastq_proka=fastq_proka
     output:
-        sam=temp("results/{sample}/{sample}_kma.sam"),
-        res="results/{sample}/{sample}_kma"
+        sam=temp(f"{output_dir}/{{sample}}/KMA_reads/{{sample}}_kma.sam"),
+        res=f"{output_dir}/{{sample}}/KMA_reads/{{sample}}_kma"
     params:
         database="/scratch/alvanuffelen/kma_v2/kma_db",
         map="-tmp $(pwd)/ -mem_mode -bc 0.7 -bcNano -ID 0.0 -ef -proxi 0.9 -na -nc -nf -1t1 -ca -verbose 2"
@@ -25,10 +26,10 @@ rule kma_align:
 
 rule samtools_filter:
     input:
-        sam="results/{sample}/{sample}_kma.sam"
+        sam=f"{output_dir}/{{sample}}/KMA_reads/{{sample}}_kma.sam"
     output:
-        bam="results/{sample}/{sample}.kmadb.bam",
-        bai="results/{sample}/{sample}.kmadb.bam.bai"
+        bam=f"{output_dir}/{{sample}}/KMA_reads/{{sample}}.kmadb.bam",
+        bai=f"{output_dir}/{{sample}}/KMA_reads/{{sample}}.kmadb.bam.bai"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=50000
@@ -43,10 +44,10 @@ rule samtools_filter:
 
 rule kma_align_resfinder:
     input:
-        fastq_proka="results/{sample}/{sample}_filtered.fastq.gz"
+        fastq_proka=fastq_proka
     output:
-        sam=temp("results/{sample}/{sample}_resf.sam"),
-        res="results/{sample}/{sample}_resf"
+        sam=temp(f"{output_dir}/{{sample}}/KMA_reads/{{sample}}_resf.sam"),
+        res=f"{output_dir}/{{sample}}/KMA_reads/{{sample}}_resf"
     params:
         database="/db/resfinder4/latest/all",
         map="-tmp $(pwd)/ -mem_mode -bc 0.7 -bcNano -ID 0.0 -ef -proxi 0.9 -na -nc -nf -ca -verbose 2"
@@ -63,9 +64,9 @@ rule kma_align_resfinder:
 
 rule repair_header:
     input:
-        sam="results/{sample}/{sample}_resf.sam"
+        sam=f"{output_dir}/{{sample}}/KMA_reads/{{sample}}_resf.sam"
     output:
-        bam="results/{sample}/{sample}_rep.resf.bam"
+        bam=f"{output_dir}/{{sample}}/KMA_reads/{{sample}}_rep.resf.bam"
     resources:
         cpus_per_task=config['threads'],
         mem_mb=50000
