@@ -11,7 +11,13 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-MODEL="r1041_e82_400bps_sup_v5.0.0"
+# This scirpt runs Floria on a BAM file and a reference genome.
+# Dependencies:
+# - longshot: https://github.com/pjedge/longshot 
+# - floria: https://github.com/bluenote-1577/floria
+# - floria-strainer: https://github.com/maxibor/floria-strainer
+#  --> Here these have been installed through conda environments. The floria/floria-strainer env is found in workflow/envs/floria.yaml
+
 
 BAM=$(realpath $1)
 FA=$(realpath $2)
