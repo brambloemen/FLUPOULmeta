@@ -1,5 +1,5 @@
 # Readme for FLUPOULmeta pipeline
-
+![alt text](Fig3_methylation.png)
 ## Installation
 This pipeline consists of a snakemake workflow, and uses mamba/conda to install the correct snakemake version. The best way to get it running is by downloading the GitHub Repository and installing the base snakemake environment: 
 ```
