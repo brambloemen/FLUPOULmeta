@@ -11,7 +11,7 @@ mamba install workflow/envs/FLUPOUL.yaml
 ### Dependencies
 The pipeline also requires quite several tools or tools requiring databases. Some of these tools are managed through mamba/conda environments. These will be installed automatically when running the pipeline with the `--use-conda` snakemake command line parameter set.
 
-Several tools are however not managed through mamba/conda, or are managed with mamba/conda but require downloading of databases (e.g. genomad.). These tools and/or tool databases are specified in a section of the config.yaml file:
+**Several tools are however not managed through mamba/conda, or are managed with mamba/conda but require downloading of databases (e.g. genomad.). These tools and/or tool databases are specified in a section of the config.yaml file:**
 ```
 tools:
   Genomad:
