@@ -11,7 +11,7 @@ mamba install workflow/envs/FLUPOUL.yaml
 ### Dependencies
 The pipeline also requires quite several tools or tools requiring databases. Some of these tools are managed through mamba/conda environments. These will be installed automatically when running the pipeline with the `--use-conda` snakemake command line parameter set.
 
-**Several tools are however not managed through mamba/conda, or are managed with mamba/conda but require downloading of databases (e.g. genomad.). These tools and/or tool databases are specified in a section of the config.yaml file:**
+**Several tools are however not managed through mamba/conda and require manual installation, or are managed with mamba/conda but require manual installation of databases (e.g. genomad.). These tools and/or tool databases are specified in a section of the config.yaml file:**
 ```
 tools:
   Genomad:
@@ -24,7 +24,7 @@ tools:
   ...
 ```
 
-If desired, several of the tools can also be replaced with their mamba/conda versions. In that case, the `conda:` directive needs to be added to the respective rules to specify the conda environment to be used for the rule.
+If desired, several of the tools can also be replaced with their mamba/conda versions (e.g. seqkit). In that case, the `conda:` directive needs to be added to the respective rules to specify the conda environment to be used for the rule, along with an env.yaml file in the workflow/envs directory.
 
 ### Obtaining the Sequencing Data for the study
 The sequencing data for this study were uploaded to the European Nucleotide Archive (ENA), under study accession number PRJEB86979.

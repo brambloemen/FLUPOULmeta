@@ -21,7 +21,8 @@ tools:
     resfinder_db: "/db/resfinder4/latest/all"
     taxonomic_db: "/scratch/alvanuffelen/kma_v2/kma_db"
   Kraken2:
-    path: "/usr/local/bin/lmod/kraken2_remote/2.1.1/venv/bin/"
+    path: "/usr/local/bin/lmod/kraken2_remote/2.1.1/"
+    venv: "/usr/local/bin/lmod/kraken2_remote/2.1.1/venv/bin/"
     db: "/db/kraken2_full/20240113/"
   Krona:
     path: "/usr/local/bin/lmod/krona/2.8.1/bin/"

@@ -1,4 +1,5 @@
 kraken2=config["tools"]["Kraken2"]["path"]
+kraken2_env=config["tools"]["Kraken2"]["venv"]
 krakendb=config["tools"]["Kraken2"]["db"]
 krona=config["tools"]["Krona"]["path"]
 output_dir=config.get("output_dir", "results")
@@ -19,8 +20,8 @@ rule kraken2:
         f"logs/kraken2/{{sample}}.log"
     shell:
         """
-        export PATH={kraken2}:{krona}:$PATH
-        source {kraken2}/activate
+        export PATH={kraken2}:{kraken2_env}:{krona}:$PATH
+        source {kraken2_env}/activate
         mkdir -p {output_dir}/{wildcards.sample}
         kraken2 --db {params.db} --threads 20 --report {output.report} --output {output.kraken} {input}
         ktImportTaxonomy {output.report} -t 5 -m 3 -o {output.krona}
